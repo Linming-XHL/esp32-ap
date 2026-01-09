@@ -1,0 +1,36 @@
+name: Build ESP32 NAT Router
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up ESP-IDF
+      uses: espressif/esp-idf-ci-action@v1
+      with:
+        esp_idf_version: v5.5
+        target: esp32
+      
+    - name: Build project
+      run: idf.py build
+      
+    - name: Upload binaries
+      uses: actions/upload-artifact@v4
+      with:
+        name: esp32-nat-router-binaries
+        path: |
+          build/bootloader/bootloader.bin
+          build/partition_table/partition-table.bin
+          build/esp32_nat_router.bin
+          build/ota_data_initial.bin
+        retention-days: 30

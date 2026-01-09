@@ -13,7 +13,7 @@
         
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #f0f2f5;
             min-height: 100vh;
             display: flex;
             align-items: center;
@@ -31,7 +31,7 @@
         }
         
         .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #2c3e50;
             color: white;
             padding: 30px;
             text-align: center;
@@ -56,11 +56,6 @@
             padding: 20px;
             border: 2px solid #f0f0f0;
             border-radius: 10px;
-            transition: border-color 0.3s ease;
-        }
-        
-        .section:hover {
-            border-color: #667eea;
         }
         
         .section h3 {
@@ -103,21 +98,19 @@
             border: 2px solid #e1e1e1;
             border-radius: 8px;
             font-size: 14px;
-            transition: all 0.3s ease;
             background: #fafafa;
         }
         
         input[type="text"]:focus,
         input[type="password"]:focus {
             outline: none;
-            border-color: #667eea;
+            border-color: #3498db;
             background: white;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
         }
         
         .submit-btn {
             width: 100%;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #3498db;
             color: white;
             border: none;
             padding: 15px;
@@ -125,17 +118,7 @@
             font-size: 16px;
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.3s ease;
             margin-top: 20px;
-        }
-        
-        .submit-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
-        }
-        
-        .submit-btn:active {
-            transform: translateY(0);
         }
         
         .status-message {
@@ -205,9 +188,9 @@
             <h1>ESP32 Wi-Fi 中继器</h1>
             <p>配置您的网络设置</p>
             <p style="font-size: 12px; opacity: 0.8; margin-top: 10px;">
-                💡 提示：长按BOOT按钮5秒可恢复出厂设置<br>
-                🌐 自动跳转：访问任何网站都会自动跳转到此配置页面<br>
-                🔐 默认密码：热点默认密码为 <strong>12345678</strong>
+                提示：长按BOOT按钮5秒可恢复出厂设置<br>
+                自动跳转：访问任何网站都会自动跳转到此配置页面<br>
+                默认密码：热点默认密码为 <strong>12345678</strong>
             </p>
         </div>
         
@@ -268,7 +251,7 @@
             const statusMessage = document.getElementById('statusMessage');
             
             // 显示加载状态
-            submitBtn.innerHTML = '<span class="loading"></span>正在保存...';
+            submitBtn.innerHTML = '正在保存...';
             submitBtn.disabled = true;
             statusMessage.style.display = 'none';
             
