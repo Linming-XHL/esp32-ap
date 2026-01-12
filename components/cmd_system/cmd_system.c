@@ -69,7 +69,7 @@ static void register_free_mem(void)
 static int flash_id(int argc, char **argv)
 {
     uint32_t id = 0;
-    esp_err_t ret = esp_flash_read_id(esp_flash_default_chip(), &id);
+    esp_err_t ret = esp_flash_read_id(esp_flash_default_chip, &id);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Error reading flash ID: %s", esp_err_to_name(ret));
         return 1;
@@ -122,7 +122,7 @@ static int flash_read(int argc, char **argv)
         ESP_LOGE(TAG, "Cannot allocate buffer for data");
         return 1;
     }
-    esp_err_t ret = esp_flash_read(esp_flash_default_chip(), data, addr, len);
+    esp_err_t ret = esp_flash_read(esp_flash_default_chip, data, addr, len);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Error reading from flash: %s", esp_err_to_name(ret));
         free(data);
@@ -275,7 +275,7 @@ static int light_sleep(int argc, char **argv)
         ESP_ERROR_CHECK( rtc_gpio_set_direction(io_num, RTC_GPIO_MODE_INPUT_ONLY) );
         ESP_ERROR_CHECK( rtc_gpio_pullup_dis(io_num) );
         ESP_ERROR_CHECK( rtc_gpio_pulldown_dis(io_num) );
-        ESP_ERROR_CHECK( rtc_gpio_wakeup_enable(io_num, level ? RTC_GPIO_INTR_HIGH_LEVEL : RTC_GPIO_INTR_LOW_LEVEL) );
+        ESP_ERROR_CHECK( rtc_gpio_wakeup_enable(io_num, level ? RTC_GPIO_INTR_HIGH : RTC_GPIO_INTR_LOW) );
     }
     if (io_count > 0) {
         ESP_ERROR_CHECK( esp_sleep_enable_gpio_wakeup() );
