@@ -174,6 +174,9 @@ static esp_err_t index_get_handler(httpd_req_t *req)
     /* Send response with custom headers and body set as the
      * string passed in user context*/
     const char* resp_str = (const char*) req->user_ctx;
+    httpd_resp_set_hdr(req, "Cache-Control", "no-cache, no-store, must-revalidate");
+    httpd_resp_set_hdr(req, "Pragma", "no-cache");
+    httpd_resp_set_hdr(req, "Expires", "0");
     httpd_resp_send(req, resp_str, strlen(resp_str));
 
     return ESP_OK;
@@ -596,6 +599,9 @@ static esp_err_t modern_index_handler(httpd_req_t *req)
     const size_t index_html_size = (index_html_end - index_html_start);
 
     httpd_resp_set_type(req, "text/html");
+    httpd_resp_set_hdr(req, "Cache-Control", "no-cache, no-store, must-revalidate");
+    httpd_resp_set_hdr(req, "Pragma", "no-cache");
+    httpd_resp_set_hdr(req, "Expires", "0");
     httpd_resp_send(req, index_html_start, index_html_size);
     return ESP_OK;
 }
