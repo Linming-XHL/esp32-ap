@@ -6,6 +6,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <stdint.h>
 #include "esp_console.h"
 #include "argtable3/argtable3.h"
 #include "freertos/FreeRTOS.h"
@@ -21,6 +22,9 @@
 #include "cmd_system.h"
 #include "router_globals.h"
 #include "soc/soc.h"
+#include "esp_flash.h"
+#include "driver/gpio.h"
+#include "driver/rtc_io.h"
 
 static const char *TAG = "cmd_system";
 
@@ -46,7 +50,7 @@ static void register_restart(void)
 /** 'free' command prints available heap memory */
 static int free_mem(int argc, char **argv)
 {
-    printf("%u\n", esp_get_free_heap_size());
+    printf("%lu\n", (unsigned long)esp_get_free_heap_size());
     return 0;
 }
 
@@ -65,7 +69,7 @@ static void register_free_mem(void)
 static int flash_id(int argc, char **argv)
 {
     uint32_t id = 0;
-    esp_err_t ret = esp_flash_read_id(esp_flash_default_chip, &id);
+    esp_err_t ret = esp_flash_read_id(esp_flash_default_chip(), &id);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Error reading flash ID: %s", esp_err_to_name(ret));
         return 1;
@@ -118,7 +122,7 @@ static int flash_read(int argc, char **argv)
         ESP_LOGE(TAG, "Cannot allocate buffer for data");
         return 1;
     }
-    esp_err_t ret = esp_flash_read(esp_flash_default_chip, data, addr, len);
+    esp_err_t ret = esp_flash_read(esp_flash_default_chip(), data, addr, len);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Error reading from flash: %s", esp_err_to_name(ret));
         free(data);
