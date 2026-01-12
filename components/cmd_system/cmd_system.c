@@ -270,15 +270,8 @@ static int light_sleep(int argc, char **argv)
         ESP_LOGI(TAG, "Enabling wakeup on GPIO%d, wakeup on %s level",
                  io_num, level ? "HIGH" : "LOW");
 
-        // 替换 gpio_wakeup_enable 函数为 rtc_gpio_wakeup_enable
-        ESP_ERROR_CHECK( rtc_gpio_init(io_num) );
-        ESP_ERROR_CHECK( rtc_gpio_set_direction(io_num, RTC_GPIO_MODE_INPUT_ONLY) );
-        ESP_ERROR_CHECK( rtc_gpio_pullup_dis(io_num) );
-        ESP_ERROR_CHECK( rtc_gpio_pulldown_dis(io_num) );
-        ESP_ERROR_CHECK( rtc_gpio_wakeup_enable(io_num, level ? RTC_GPIO_INTR_LEVEL_HI : RTC_GPIO_INTR_LEVEL_LO) );
-    }
-    if (io_count > 0) {
-        ESP_ERROR_CHECK( esp_sleep_enable_gpio_wakeup() );
+        // 使用esp_sleep_enable_ext0_wakeup替代rtc_gpio_wakeup_enable
+        ESP_ERROR_CHECK( esp_sleep_enable_ext0_wakeup(io_num, level) );
     }
     if (CONFIG_ESP_CONSOLE_UART_NUM <= UART_NUM_1) {
         ESP_LOGI(TAG, "Enabling UART wakeup (press ENTER to exit light sleep)");
