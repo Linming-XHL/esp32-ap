@@ -275,7 +275,7 @@ static int light_sleep(int argc, char **argv)
         ESP_ERROR_CHECK( rtc_gpio_set_direction(io_num, RTC_GPIO_MODE_INPUT_ONLY) );
         ESP_ERROR_CHECK( rtc_gpio_pullup_dis(io_num) );
         ESP_ERROR_CHECK( rtc_gpio_pulldown_dis(io_num) );
-        ESP_ERROR_CHECK( rtc_gpio_wakeup_enable(io_num, level ? RTC_GPIO_INTR_HIGH : RTC_GPIO_INTR_LOW) );
+        ESP_ERROR_CHECK( rtc_gpio_wakeup_enable(io_num, level ? RTC_GPIO_INTR_LEVEL_HI : RTC_GPIO_INTR_LEVEL_LO) );
     }
     if (io_count > 0) {
         ESP_ERROR_CHECK( esp_sleep_enable_gpio_wakeup() );
