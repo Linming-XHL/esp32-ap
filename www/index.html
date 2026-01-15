@@ -238,6 +238,39 @@
     </div>
     
     <script>
+        // 页面加载时获取当前配置
+        window.addEventListener('DOMContentLoaded', function() {
+            // 发送GET请求获取当前配置
+            fetch('/config', {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(config => {
+                // 填充表单字段
+                if (config.ssid) {
+                    document.getElementById('sta_ssid').value = config.ssid;
+                }
+                if (config.passwd) {
+                    document.getElementById('sta_password').value = config.passwd;
+                }
+                if (config.ap_ssid) {
+                    document.getElementById('ap_ssid').value = config.ap_ssid;
+                }
+                if (config.ap_passwd) {
+                    document.getElementById('ap_password').value = config.ap_passwd;
+                }
+                if (config.ap_mac) {
+                    document.getElementById('ap_mac').value = config.ap_mac;
+                }
+            })
+            .catch(error => {
+                console.error('获取配置失败:', error);
+            });
+        });
+
         document.getElementById('configForm').addEventListener('submit', function(e) {
             e.preventDefault();
             

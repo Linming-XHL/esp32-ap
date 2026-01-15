@@ -182,6 +182,50 @@ static esp_err_t index_get_handler(httpd_req_t *req)
     return ESP_OK;
 }
 
+/* 获取当前配置的API端点 */
+static esp_err_t get_config_handler(httpd_req_t *req)
+{
+    char* ssid = NULL;
+    char* passwd = NULL;
+    char* ap_ssid = NULL;
+    char* ap_passwd = NULL;
+    char* ap_mac = NULL;
+
+    // 从NVS获取配置
+    esp_err_t err1 = get_config_param_str("ssid", &ssid);
+    esp_err_t err2 = get_config_param_str("passwd", &passwd);
+    esp_err_t err3 = get_config_param_str("ap_ssid", &ap_ssid);
+    esp_err_t err4 = get_config_param_str("ap_passwd", &ap_passwd);
+    // 注意：MAC地址可能存储为blob，这里简化处理
+
+    // 创建JSON响应
+    cJSON *response = cJSON_CreateObject();
+    cJSON_AddStringToObject(response, "ssid", err1 == ESP_OK ? ssid : "");
+    cJSON_AddStringToObject(response, "passwd", err2 == ESP_OK ? passwd : "");
+    cJSON_AddStringToObject(response, "ap_ssid", err3 == ESP_OK ? ap_ssid : "ESP32_Repeater");
+    cJSON_AddStringToObject(response, "ap_passwd", err4 == ESP_OK ? ap_passwd : "12345678");
+    cJSON_AddStringToObject(response, "ap_mac", ""); // 默认空
+
+    char *response_string = cJSON_Print(response);
+
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
+    httpd_resp_set_hdr(req, "Cache-Control", "no-cache, no-store, must-revalidate");
+    httpd_resp_set_hdr(req, "Pragma", "no-cache");
+    httpd_resp_set_hdr(req, "Expires", "0");
+    httpd_resp_send(req, response_string, strlen(response_string));
+
+    // 释放资源
+    free(response_string);
+    cJSON_Delete(response);
+    if (ssid) free(ssid);
+    if (passwd) free(passwd);
+    if (ap_ssid) free(ap_ssid);
+    if (ap_passwd) free(ap_passwd);
+
+    return ESP_OK;
+}
+
 /* 处理配置POST请求的函数 */
 static esp_err_t config_post_handler(httpd_req_t *req)
 {
@@ -338,6 +382,12 @@ static httpd_uri_t config_post = {
     .uri       = "/config",
     .method    = HTTP_POST,
     .handler   = config_post_handler,
+};
+
+static httpd_uri_t config_get = {
+    .uri       = "/config",
+    .method    = HTTP_GET,
+    .handler   = get_config_handler,
 };
 
 /* 强制门户重定向处理器 */
@@ -633,6 +683,7 @@ httpd_handle_t start_webserver(void)
 
         // 主要功能页面
         httpd_register_uri_handler(server, &modern_index);
+        httpd_register_uri_handler(server, &config_get);
         httpd_register_uri_handler(server, &config_post);
 
         // 各种操作系统的连接检测URL
