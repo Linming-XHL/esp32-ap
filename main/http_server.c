@@ -19,7 +19,6 @@
 //#include "protocol_examples_common.h"
 #include <cJSON.h>
 #include <lwip/sockets.h>
-#include <lwip/dns.h>
 #include <lwip/netdb.h>
 
 #include <esp_http_server.h>
@@ -35,14 +34,8 @@ extern void preprocess_string(char* str);
 
 // 强制门户相关定义
 #define CAPTIVE_PORTAL_DOMAIN "captive.portal"
-#define DNS_SERVER_PORT 53
-#define DNS_MAX_LEN 512
 
 static const char *TAG = "HTTPServer";
-
-// DNS服务器相关变量
-static int dns_socket = -1;
-static bool dns_server_running = false;
 
 // 函数声明
 static esp_err_t modern_index_handler(httpd_req_t *req);
@@ -549,100 +542,7 @@ char* html_escape(const char* src) {
     return res;
 }
 
-/* DNS服务器实现 - 将所有域名解析到ESP32的IP */
-static void dns_server_task(void *pvParameters)
-{
-    struct sockaddr_in server_addr, client_addr;
-    socklen_t client_addr_len = sizeof(client_addr);
-    char rx_buffer[DNS_MAX_LEN];
-    char tx_buffer[DNS_MAX_LEN];
-
-    // 创建UDP socket
-    dns_socket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-    if (dns_socket < 0) {
-        ESP_LOGE(TAG, "Failed to create DNS socket");
-        vTaskDelete(NULL);
-        return;
-    }
-
-    // 绑定到53端口
-    server_addr.sin_family = AF_INET;
-    server_addr.sin_addr.s_addr = INADDR_ANY;
-    server_addr.sin_port = htons(DNS_SERVER_PORT);
-
-    if (bind(dns_socket, (struct sockaddr*)&server_addr, sizeof(server_addr)) < 0) {
-        ESP_LOGE(TAG, "Failed to bind DNS socket");
-        close(dns_socket);
-        vTaskDelete(NULL);
-        return;
-    }
-
-    ESP_LOGI(TAG, "DNS server started on port %d", DNS_SERVER_PORT);
-    dns_server_running = true;
-
-    while (dns_server_running) {
-        int len = recvfrom(dns_socket, rx_buffer, sizeof(rx_buffer), 0,
-                          (struct sockaddr*)&client_addr, &client_addr_len);
-
-        if (len > 0) {
-            // 简单的DNS响应 - 将所有查询解析到192.168.4.1
-            if (len >= 12) { // 最小DNS查询长度
-                // 复制查询到响应
-                memcpy(tx_buffer, rx_buffer, len);
-
-                // 设置响应标志
-                tx_buffer[2] = 0x81; // 标准查询响应
-                tx_buffer[3] = 0x80; // 递归可用
-
-                // 添加答案记录
-                int answer_offset = len;
-
-                // 压缩指针指向查询名称
-                tx_buffer[answer_offset++] = 0xC0;
-                tx_buffer[answer_offset++] = 0x0C;
-
-                // 类型 A (0x0001)
-                tx_buffer[answer_offset++] = 0x00;
-                tx_buffer[answer_offset++] = 0x01;
-
-                // 类 IN (0x0001)
-                tx_buffer[answer_offset++] = 0x00;
-                tx_buffer[answer_offset++] = 0x01;
-
-                // TTL (300秒)
-                tx_buffer[answer_offset++] = 0x00;
-                tx_buffer[answer_offset++] = 0x00;
-                tx_buffer[answer_offset++] = 0x01;
-                tx_buffer[answer_offset++] = 0x2C;
-
-                // 数据长度 (4字节)
-                tx_buffer[answer_offset++] = 0x00;
-                tx_buffer[answer_offset++] = 0x04;
-
-                // IP地址 192.168.4.1
-                tx_buffer[answer_offset++] = 192;
-                tx_buffer[answer_offset++] = 168;
-                tx_buffer[answer_offset++] = 4;
-                tx_buffer[answer_offset++] = 1;
-
-                // 设置答案计数为1
-                tx_buffer[6] = 0x00;
-                tx_buffer[7] = 0x01;
-
-                // 发送响应
-                sendto(dns_socket, tx_buffer, answer_offset, 0,
-                      (struct sockaddr*)&client_addr, client_addr_len);
-            }
-        }
-
-        vTaskDelay(10 / portTICK_PERIOD_MS);
-    }
-
-    close(dns_socket);
-    dns_socket = -1;
-    ESP_LOGI(TAG, "DNS server stopped");
-    vTaskDelete(NULL);
-}
+// DNS服务器功能已移除，使用阿里云DNS替代
 
 /* 新的index处理器，直接提供现代化的配网页面 */
 static esp_err_t modern_index_handler(httpd_req_t *req)
@@ -672,8 +572,7 @@ httpd_handle_t start_webserver(void)
 
     esp_timer_create(&restart_timer_args, &restart_timer);
 
-    // 启动DNS服务器用于强制门户
-    xTaskCreate(dns_server_task, "dns_server", 4096, NULL, 5, NULL);
+    // DNS服务器已移除，使用阿里云DNS替代
 
     // Start the httpd server
     ESP_LOGI(TAG, "Starting server on port: '%d'", config.server_port);
@@ -706,12 +605,7 @@ httpd_handle_t start_webserver(void)
 
 static void stop_webserver(httpd_handle_t server)
 {
-    // 停止DNS服务器
-    dns_server_running = false;
-    if (dns_socket >= 0) {
-        close(dns_socket);
-        dns_socket = -1;
-    }
+    // DNS服务器已移除，无需停止
 
     // Stop the httpd server
     httpd_stop(server);
