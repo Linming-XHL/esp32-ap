@@ -548,11 +548,12 @@ void wifi_init(const uint8_t* mac, const char* ssid, const char* ent_username, c
     wifi_config_t wifi_config = { 0 };
         wifi_config_t ap_config = {
         .ap = {
-            .channel = 0,
+            .channel = 1,
             .authmode = WIFI_AUTH_WPA2_WPA3_PSK,
             .ssid_hidden = 0,
             .max_connection = 8,
             .beacon_interval = 100,
+            .bandwidth = WIFI_BW_HT40,
         }
     };
 
