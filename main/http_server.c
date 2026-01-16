@@ -182,14 +182,12 @@ static esp_err_t get_config_handler(httpd_req_t *req)
     char* passwd = NULL;
     char* ap_ssid = NULL;
     char* ap_passwd = NULL;
-    char* ap_mac = NULL;
 
     // 从NVS获取配置
     esp_err_t err1 = get_config_param_str("ssid", &ssid);
     esp_err_t err2 = get_config_param_str("passwd", &passwd);
     esp_err_t err3 = get_config_param_str("ap_ssid", &ap_ssid);
     esp_err_t err4 = get_config_param_str("ap_passwd", &ap_passwd);
-    // 注意：MAC地址可能存储为blob，这里简化处理
 
     // 创建JSON响应
     cJSON *response = cJSON_CreateObject();
@@ -365,11 +363,7 @@ static esp_err_t config_post_handler(httpd_req_t *req)
     return ESP_OK;
 }
 
-static httpd_uri_t indexp = {
-    .uri       = "/",
-    .method    = HTTP_GET,
-    .handler   = index_get_handler,
-};
+
 
 static httpd_uri_t config_post = {
     .uri       = "/config",

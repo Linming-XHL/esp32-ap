@@ -284,9 +284,9 @@ static void initialize_console(void)
     fsync(fileno(stdout));
     
     /* Minicom, screen, idf_monitor send CR when ENTER key is pressed */
-    esp_vfs_dev_uart_port_set_rx_line_endings(0, ESP_LINE_ENDINGS_CR);
+    uart_vfs_dev_port_set_rx_line_endings(0, ESP_LINE_ENDINGS_CR);
     /* Move the caret to the beginning of the next line on '\n' */
-    esp_vfs_dev_uart_port_set_tx_line_endings(0, ESP_LINE_ENDINGS_CRLF);
+    uart_vfs_dev_port_set_tx_line_endings(0, ESP_LINE_ENDINGS_CRLF);
 
     /* Configure UART. Note that REF_TICK is used so that the baud rate remains
      * correct while APB frequency is changing in light sleep mode.
@@ -308,7 +308,7 @@ static void initialize_console(void)
     ESP_ERROR_CHECK( uart_param_config(CONFIG_ESP_CONSOLE_UART_NUM, &uart_config) );
 
     /* Tell VFS to use UART driver */
-    esp_vfs_dev_uart_use_driver(CONFIG_ESP_CONSOLE_UART_NUM);
+    uart_vfs_dev_use_driver(CONFIG_ESP_CONSOLE_UART_NUM);
 #endif
 
 #if CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG
@@ -479,24 +479,25 @@ static void wifi_event_handler(void* arg, esp_event_base_t event_base,
         }
         xEventGroupSetBits(wifi_event_group, WIFI_CONNECTED_BIT);
     }
-    else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP6)
-    {
-        ip_event_got_ip6_t* event = (ip_event_got_ip6_t*) event_data;
-        ESP_LOGI(TAG, "got IPv6 address:");
-        for (int i = 0; i < 8; i++) {
-            ESP_LOGI(TAG, "%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x",
-                     event->ip6_info.ip.addr[0], event->ip6_info.ip.addr[1],
-                     event->ip6_info.ip.addr[2], event->ip6_info.ip.addr[3],
-                     event->ip6_info.ip.addr[4], event->ip6_info.ip.addr[5],
-                     event->ip6_info.ip.addr[6], event->ip6_info.ip.addr[7],
-                     event->ip6_info.ip.addr[8], event->ip6_info.ip.addr[9],
-                     event->ip6_info.ip.addr[10], event->ip6_info.ip.addr[11],
-                     event->ip6_info.ip.addr[12], event->ip6_info.ip.addr[13],
-                     event->ip6_info.ip.addr[14], event->ip6_info.ip.addr[15]);
-        }
-        // 当获取到IPv6地址时，也可以标记为已连接
-        xEventGroupSetBits(wifi_event_group, WIFI_CONNECTED_BIT);
-    }
+    // IPv6事件处理暂时注释，等待进一步确认支持情况
+    // else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP6)
+    // {
+    //     ip_event_got_ip6_t* event = (ip_event_got_ip6_t*) event_data;
+    //     ESP_LOGI(TAG, "got IPv6 address:");
+    //     for (int i = 0; i < 8; i++) {
+    //         ESP_LOGI(TAG, "%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x",
+    //                  event->ip6_info.ip.addr[0], event->ip6_info.ip.addr[1],
+    //                  event->ip6_info.ip.addr[2], event->ip6_info.ip.addr[3],
+    //                  event->ip6_info.ip.addr[4], event->ip6_info.ip.addr[5],
+    //                  event->ip6_info.ip.addr[6], event->ip6_info.ip.addr[7],
+    //                  event->ip6_info.ip.addr[8], event->ip6_info.ip.addr[9],
+    //                  event->ip6_info.ip.addr[10], event->ip6_info.ip.addr[11],
+    //                  event->ip6_info.ip.addr[12], event->ip6_info.ip.addr[13],
+    //                  event->ip6_info.ip.addr[14], event->ip6_info.ip.addr[15]);
+    //     }
+    //     // 当获取到IPv6地址时，也可以标记为已连接
+    //     xEventGroupSetBits(wifi_event_group, WIFI_CONNECTED_BIT);
+    // }
     else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_AP_STACONNECTED)
     {
         connect_count++;
@@ -548,11 +549,12 @@ void wifi_init(const uint8_t* mac, const char* ssid, const char* ent_username, c
     // 启用IPv6支持
     esp_netif_dhcps_start(wifiAP);
     
+    // IPv6配置暂时注释，等待进一步确认支持情况
     // 为AP接口启用IPv6
-    ESP_ERROR_CHECK(esp_netif_ip6_enable(wifiAP));
+    // ESP_ERROR_CHECK(esp_netif_ip6_enable(wifiAP));
     
     // 启用SLAAC（无状态地址自动配置）
-    ESP_ERROR_CHECK(esp_netif_set_hostname(wifiAP, "esp32-nat-router"));
+    // ESP_ERROR_CHECK(esp_netif_set_hostname(wifiAP, "esp32-nat-router"));
 
     esp_event_handler_instance_t instance_any_id;
     esp_event_handler_instance_t instance_got_ip;
@@ -579,7 +581,6 @@ void wifi_init(const uint8_t* mac, const char* ssid, const char* ent_username, c
             .ssid_hidden = 0,
             .max_connection = 8,
             .beacon_interval = 100,
-            .bandwidth = WIFI_BW_HT40,
         }
     };
 
@@ -640,6 +641,9 @@ void wifi_init(const uint8_t* mac, const char* ssid, const char* ent_username, c
     xEventGroupWaitBits(wifi_event_group, CONNECTED_BIT,
         pdFALSE, pdTRUE, JOIN_TIMEOUT_MS / portTICK_PERIOD_MS);
     ESP_ERROR_CHECK(esp_wifi_start());
+    
+    // 设置WiFi带宽为40MHz
+    ESP_ERROR_CHECK(esp_wifi_set_bandwidth(WIFI_IF_AP, WIFI_BW_HT40));
 
     if (strlen(ssid) > 0) {
         ESP_LOGI(TAG, "wifi_init_apsta finished.");
