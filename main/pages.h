@@ -159,47 +159,6 @@ setTimeout(\"location.href = '/'\",10000);\
 </tr>\
 </table>\
 </form>\
-\
-<h2>Battery Status</h2>\
-<div id='battery_status'>\
-<table>\
-<tr>\
-<td>Voltage:</td>\
-<td id='battery_voltage'>-</td>\
-</tr>\
-<tr>\
-<td>Percentage:</td>\
-<td id='battery_percentage'>-</td>\
-</tr>\
-<tr>\
-<td>Status:</td>\
-<td id='battery_status_text'>-</td>\
-</tr>\
-</table>\
-</div>\
-\
-<script>\
-// 定期获取电量数据\
-function getBatteryStatus() {\
-    fetch('/battery', { method: 'GET' })\
-    .then(response => response.json())\
-    .then(data => {\
-        document.getElementById('battery_voltage').textContent = data.voltage + ' V';\
-        document.getElementById('battery_percentage').textContent = data.percentage + '%';\
-        document.getElementById('battery_status_text').textContent = data.status;\
-    })\
-    .catch(error => {\
-        console.error('Failed to get battery status:', error);\
-    });\
-}\
-\
-// 初始化时获取一次，然后每10秒获取一次\
-window.addEventListener('DOMContentLoaded', function() {\
-    getBatteryStatus();\
-    setInterval(getBatteryStatus, 10000);\
-});\
-</script>\
-\
 </div>\
 </body>\
 </html>\

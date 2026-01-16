@@ -22,8 +22,6 @@
 #include <lwip/netdb.h>
 
 #include <esp_http_server.h>
-#include "driver/adc.h"
-#include "esp_adc_cal.h"
 
 #include "pages.h"
 #include "router_globals.h"
@@ -174,77 +172,6 @@ static esp_err_t index_get_handler(httpd_req_t *req)
     httpd_resp_set_hdr(req, "Expires", "0");
     httpd_resp_send(req, resp_str, strlen(resp_str));
 
-    return ESP_OK;
-}
-
-/* 电池状态API端点 */
-static esp_err_t battery_handler(httpd_req_t *req)
-{
-    // 初始化ADC参数
-    static bool adc_initialized = false;
-    static esp_adc_cal_characteristics_t adc_chars;
-    
-    if (!adc_initialized) {
-        // 初始化ADC
-        adc1_config_width(ADC_WIDTH_BIT_12);
-        adc1_config_channel_atten(ADC1_CHANNEL_0, ADC_ATTEN_DB_11); // 使用ADC1通道0，衰减11dB
-        
-        // 初始化ADC校准
-        esp_adc_cal_value_t val_type = esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12, 1100, &adc_chars);
-        (void)val_type; // 避免未使用变量警告
-        
-        adc_initialized = true;
-    }
-    
-    // 读取电池电压（模拟数据，实际项目中需要根据硬件电路调整）
-    // 注意：ESP32的ADC输入电压范围有限，实际项目中需要使用分压电路
-    uint32_t adc_reading = adc1_get_raw(ADC1_CHANNEL_0);
-    uint32_t voltage = esp_adc_cal_raw_to_voltage(adc_reading, &adc_chars);
-    
-    // 将电压转换为电池百分比（简单的线性转换，实际项目中需要根据电池特性调整）
-    float battery_voltage = (float)voltage / 1000.0;
-    int battery_percentage = 0;
-    
-    // 假设电池电压范围为3.0V-4.2V
-    if (battery_voltage < 3.0) {
-        battery_percentage = 0;
-    } else if (battery_voltage > 4.2) {
-        battery_percentage = 100;
-    } else {
-        battery_percentage = (int)(((battery_voltage - 3.0) / (4.2 - 3.0)) * 100);
-    }
-    
-    // 确定电池状态
-    const char *battery_status = "Unknown";
-    if (battery_percentage >= 70) {
-        battery_status = "Good";
-    } else if (battery_percentage >= 30) {
-        battery_status = "Medium";
-    } else if (battery_percentage >= 10) {
-        battery_status = "Low";
-    } else {
-        battery_status = "Critical";
-    }
-    
-    // 创建JSON响应
-    cJSON *response = cJSON_CreateObject();
-    cJSON_AddNumberToObject(response, "voltage", battery_voltage);
-    cJSON_AddNumberToObject(response, "percentage", battery_percentage);
-    cJSON_AddStringToObject(response, "status", battery_status);
-    
-    char *response_string = cJSON_Print(response);
-    
-    httpd_resp_set_type(req, "application/json");
-    httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
-    httpd_resp_set_hdr(req, "Cache-Control", "no-cache, no-store, must-revalidate");
-    httpd_resp_set_hdr(req, "Pragma", "no-cache");
-    httpd_resp_set_hdr(req, "Expires", "0");
-    httpd_resp_send(req, response_string, strlen(response_string));
-    
-    // 释放资源
-    free(response_string);
-    cJSON_Delete(response);
-    
     return ESP_OK;
 }
 
@@ -450,12 +377,6 @@ static httpd_uri_t config_get = {
     .handler   = get_config_handler,
 };
 
-static httpd_uri_t battery_get = {
-    .uri       = "/battery",
-    .method    = HTTP_GET,
-    .handler   = battery_handler,
-};
-
 /* 强制门户重定向处理器 */
 static esp_err_t captive_portal_handler(httpd_req_t *req)
 {
@@ -657,7 +578,6 @@ httpd_handle_t start_webserver(void)
         httpd_register_uri_handler(server, &modern_index);
         httpd_register_uri_handler(server, &config_get);
         httpd_register_uri_handler(server, &config_post);
-        httpd_register_uri_handler(server, &battery_get);
 
         // 各种操作系统的连接检测URL
         httpd_register_uri_handler(server, &generate_204);    // Android
