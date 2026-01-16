@@ -479,6 +479,24 @@ static void wifi_event_handler(void* arg, esp_event_base_t event_base,
         }
         xEventGroupSetBits(wifi_event_group, WIFI_CONNECTED_BIT);
     }
+    else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP6)
+    {
+        ip_event_got_ip6_t* event = (ip_event_got_ip6_t*) event_data;
+        ESP_LOGI(TAG, "got IPv6 address:");
+        for (int i = 0; i < 8; i++) {
+            ESP_LOGI(TAG, "%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x",
+                     event->ip6_info.ip.addr[0], event->ip6_info.ip.addr[1],
+                     event->ip6_info.ip.addr[2], event->ip6_info.ip.addr[3],
+                     event->ip6_info.ip.addr[4], event->ip6_info.ip.addr[5],
+                     event->ip6_info.ip.addr[6], event->ip6_info.ip.addr[7],
+                     event->ip6_info.ip.addr[8], event->ip6_info.ip.addr[9],
+                     event->ip6_info.ip.addr[10], event->ip6_info.ip.addr[11],
+                     event->ip6_info.ip.addr[12], event->ip6_info.ip.addr[13],
+                     event->ip6_info.ip.addr[14], event->ip6_info.ip.addr[15]);
+        }
+        // 当获取到IPv6地址时，也可以标记为已连接
+        xEventGroupSetBits(wifi_event_group, WIFI_CONNECTED_BIT);
+    }
     else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_AP_STACONNECTED)
     {
         connect_count++;
@@ -526,7 +544,15 @@ void wifi_init(const uint8_t* mac, const char* ssid, const char* ent_username, c
     esp_netif_set_ip4_addr(&ipInfo_ap.netmask, 255,255,255,0);
     esp_netif_dhcps_stop(wifiAP); // stop before setting ip WifiAP
     esp_netif_set_ip_info(wifiAP, &ipInfo_ap);
+    
+    // 启用IPv6支持
     esp_netif_dhcps_start(wifiAP);
+    
+    // 为AP接口启用IPv6
+    ESP_ERROR_CHECK(esp_netif_ip6_enable(wifiAP));
+    
+    // 启用SLAAC（无状态地址自动配置）
+    ESP_ERROR_CHECK(esp_netif_set_hostname(wifiAP, "esp32-nat-router"));
 
     esp_event_handler_instance_t instance_any_id;
     esp_event_handler_instance_t instance_got_ip;
