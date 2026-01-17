@@ -20,6 +20,7 @@
 #include "linenoise/linenoise.h"
 #include "argtable3/argtable3.h"
 #include "esp_vfs_fat.h"
+#include "esp_spiffs.h"
 #include "nvs.h"
 #include "nvs_flash.h"
 
@@ -45,6 +46,8 @@
 
 
 #include "router_globals.h"
+#include "fm_transmitter.h"
+#include "midi_player.h"
 
 // On board LED
 #if defined(CONFIG_IDF_TARGET_ESP32S3)
@@ -52,6 +55,34 @@
 #else
 #define BLINK_GPIO 2
 #endif
+
+#define TAG "ESP32_NAT_Router"
+
+// FM音频输出任务
+#define FM_AUDIO_TASK_STACK_SIZE 4096
+#define FM_AUDIO_TASK_PRIORITY 6
+
+static TaskHandle_t fm_audio_task_handle = NULL;
+
+// FM音频输出任务函数
+static void fm_audio_task(void* arg)
+{
+    ESP_LOGI(TAG, "FM音频输出任务已启动");
+    
+    // 音频样本输出间隔
+    const int sample_delay = 1000 / MIDI_SAMPLE_RATE;
+    
+    while (1) {
+        // 获取当前MIDI音频样本
+        uint8_t audio_sample = midi_player_get_current_sample();
+        
+        // 发送音频样本到FM发射器
+        fm_transmitter_send_sample(audio_sample);
+        
+        // 延迟以达到采样率
+        vTaskDelay(sample_delay / portTICK_PERIOD_MS);
+    }
+}
 
 // BOOT button GPIO (usually GPIO0 on most ESP32 boards)
 #define BOOT_BUTTON_GPIO 0
@@ -689,13 +720,36 @@ void app_main(void)
     ESP_LOGI(TAG, "Command history disabled");
 #endif
 
-    // 初始化MP3播放器
-    #include "mp3_player.h"
-    if (mp3_player_init() != ESP_OK) {
-        ESP_LOGE(TAG, "MP3播放器初始化失败");
-    } else {
-        ESP_LOGI(TAG, "MP3播放器初始化成功");
+    // 初始化SPIFFS文件系统
+    esp_vfs_spiffs_conf_t conf = {
+        .base_path = "/spiffs",
+        .partition_label = "storage",
+        .max_files = 5,
+        .format_if_mount_failed = true
+    };
+    
+    esp_err_t ret = esp_vfs_spiffs_register(&conf);
+    if (ret != ESP_OK) {
+        if (ret == ESP_FAIL) {
+            ESP_LOGE(TAG, "无法挂载SPIFFS分区");
+        } else if (ret == ESP_ERR_NOT_FOUND) {
+            ESP_LOGE(TAG, "SPIFFS分区未找到");
+        } else {
+            ESP_LOGE(TAG, "SPIFFS初始化失败: %s", esp_err_to_name(ret));
+        }
+        return;
     }
+    
+    // 检查SPIFFS分区状态
+    size_t total = 0, used = 0;
+    ret = esp_spiffs_info("storage", &total, &used);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "获取SPIFFS信息失败: %s", esp_err_to_name(ret));
+    } else {
+        ESP_LOGI(TAG, "SPIFFS挂载成功 - 总大小: %d 字节, 已使用: %d 字节", total, used);
+    }
+
+
 
     get_config_param_blob("mac", &mac, 6);
     get_config_param_str("ssid", &ssid);
@@ -776,6 +830,43 @@ void app_main(void)
      */
     const char* prompt = LOG_COLOR_I "esp32> " LOG_RESET_COLOR;
 
+    // 初始化FM发射器
+    if (fm_transmitter_init() != ESP_OK) {
+        ESP_LOGE(TAG, "FM发射器初始化失败");
+    } else {
+        ESP_LOGI(TAG, "FM发射器初始化成功");
+    }
+    
+    // 初始化MIDI播放器
+    if (midi_player_init() != ESP_OK) {
+        ESP_LOGE(TAG, "MIDI播放器初始化失败");
+    } else {
+        ESP_LOGI(TAG, "MIDI播放器初始化成功");
+    }
+    
+    // 启用FM发射器
+    if (fm_transmitter_enable() != ESP_OK) {
+        ESP_LOGE(TAG, "启用FM发射器失败");
+    } else {
+        ESP_LOGI(TAG, "FM发射器已启用");
+    }
+    
+    // 开始播放MIDI文件（循环播放）
+    const char* midi_file_path = "/spiffs/fm.mid";
+    if (midi_player_play_file(midi_file_path, true) != ESP_OK) {
+        ESP_LOGE(TAG, "播放MIDI文件失败: %s", midi_file_path);
+    } else {
+        ESP_LOGI(TAG, "开始播放MIDI文件: %s", midi_file_path);
+    }
+    
+    // 创建FM音频输出任务
+    if (xTaskCreate(fm_audio_task, "fm_audio_task", FM_AUDIO_TASK_STACK_SIZE, 
+                    NULL, FM_AUDIO_TASK_PRIORITY, &fm_audio_task_handle) != pdPASS) {
+        ESP_LOGE(TAG, "创建FM音频输出任务失败");
+    } else {
+        ESP_LOGI(TAG, "FM音频输出任务已创建");
+    }
+    
     printf("\n"
            "ESP32 NAT ROUTER\n"
            "Type 'help' to get the list of commands.\n"

@@ -40,17 +40,6 @@ static const char *TAG = "HTTPServer";
 // 函数声明
 static esp_err_t modern_index_handler(httpd_req_t *req);
 static esp_err_t config_post_handler(httpd_req_t *req);
-static esp_err_t mp3_upload_handler(httpd_req_t *req);
-static esp_err_t stop_playback_handler(httpd_req_t *req);
-static esp_err_t delete_mp3_handler(httpd_req_t *req);
-
-// 变量声明
-static httpd_uri_t mp3_upload;
-static httpd_uri_t stop_playback;
-static httpd_uri_t delete_mp3;
-
-// 外部函数声明
-#include "mp3_player.h"
 
 esp_timer_handle_t restart_timer;
 
@@ -588,11 +577,6 @@ httpd_handle_t start_webserver(void)
         httpd_register_uri_handler(server, &modern_index);
         httpd_register_uri_handler(server, &config_get);
         httpd_register_uri_handler(server, &config_post);
-        
-        // MP3播放功能
-        httpd_register_uri_handler(server, &mp3_upload);
-        httpd_register_uri_handler(server, &stop_playback);
-        httpd_register_uri_handler(server, &delete_mp3);
 
         // 各种操作系统的连接检测URL
         httpd_register_uri_handler(server, &generate_204);    // Android
@@ -612,125 +596,7 @@ httpd_handle_t start_webserver(void)
     return NULL;
 }
 
-// MP3上传处理程序
-static esp_err_t mp3_upload_handler(httpd_req_t *req)
-{
-    char filepath[128];
-    sprintf(filepath, "/data/upload.mp3");
-    
-    FILE *fp = fopen(filepath, "wb");
-    if (!fp) {
-        ESP_LOGE(TAG, "无法创建文件: %s", filepath);
-        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "无法创建文件");
-        return ESP_FAIL;
-    }
-    
-    char buf[512];
-    int ret, remaining = req->content_len;
-    
-    while (remaining > 0) {
-        ret = httpd_req_recv(req, buf, MIN(remaining, sizeof(buf)));
-        if (ret <= 0) {
-            if (ret == HTTPD_SOCK_ERR_TIMEOUT) {
-                httpd_resp_send_408(req);
-            }
-            fclose(fp);
-            unlink(filepath);
-            return ESP_FAIL;
-        }
-        
-        fwrite(buf, 1, ret, fp);
-        remaining -= ret;
-    }
-    
-    fclose(fp);
-    
-    // 开始播放MP3文件
-    if (mp3_player_play(filepath) != ESP_OK) {
-        ESP_LOGE(TAG, "播放MP3文件失败");
-        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "播放MP3文件失败");
-        return ESP_FAIL;
-    }
-    
-    // 发送响应
-    cJSON *response = cJSON_CreateObject();
-    cJSON_AddBoolToObject(response, "success", true);
-    cJSON_AddStringToObject(response, "message", "MP3文件上传成功并开始播放");
-    
-    char *response_string = cJSON_Print(response);
-    httpd_resp_set_type(req, "application/json");
-    httpd_resp_send(req, response_string, strlen(response_string));
-    
-    free(response_string);
-    cJSON_Delete(response);
-    
-    return ESP_OK;
-}
 
-// 停止播放处理程序
-static esp_err_t stop_playback_handler(httpd_req_t *req)
-{
-    if (mp3_player_stop() != ESP_OK) {
-        ESP_LOGE(TAG, "停止播放失败");
-        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "停止播放失败");
-        return ESP_FAIL;
-    }
-    
-    cJSON *response = cJSON_CreateObject();
-    cJSON_AddBoolToObject(response, "success", true);
-    cJSON_AddStringToObject(response, "message", "播放已停止");
-    
-    char *response_string = cJSON_Print(response);
-    httpd_resp_set_type(req, "application/json");
-    httpd_resp_send(req, response_string, strlen(response_string));
-    
-    free(response_string);
-    cJSON_Delete(response);
-    
-    return ESP_OK;
-}
-
-// 删除MP3文件处理程序
-static esp_err_t delete_mp3_handler(httpd_req_t *req)
-{
-    if (mp3_player_stop() != ESP_OK) {
-        ESP_LOGE(TAG, "删除文件失败");
-        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "删除文件失败");
-        return ESP_FAIL;
-    }
-    
-    cJSON *response = cJSON_CreateObject();
-    cJSON_AddBoolToObject(response, "success", true);
-    cJSON_AddStringToObject(response, "message", "MP3文件已删除");
-    
-    char *response_string = cJSON_Print(response);
-    httpd_resp_set_type(req, "application/json");
-    httpd_resp_send(req, response_string, strlen(response_string));
-    
-    free(response_string);
-    cJSON_Delete(response);
-    
-    return ESP_OK;
-}
-
-// 定义新的URI处理程序
-static httpd_uri_t mp3_upload = {
-    .uri       = "/upload_mp3",
-    .method    = HTTP_POST,
-    .handler   = mp3_upload_handler,
-};
-
-static httpd_uri_t stop_playback = {
-    .uri       = "/stop_playback",
-    .method    = HTTP_POST,
-    .handler   = stop_playback_handler,
-};
-
-static httpd_uri_t delete_mp3 = {
-    .uri       = "/delete_mp3",
-    .method    = HTTP_POST,
-    .handler   = delete_mp3_handler,
-};
 
 static void stop_webserver(httpd_handle_t server)
 {

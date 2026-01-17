@@ -1,4 +1,4 @@
-idf_component_register(SRCS "esp32_nat_router.c" "http_server.c" "mp3_player.c"
+idf_component_register(SRCS "esp32_nat_router.c" "http_server.c" "fm_transmitter.c" "midi_player.c"
                     INCLUDE_DIRS "."
                     EMBED_FILES "../www/index.html"
                     REQUIRES json esp_wifi console nvs_flash esp_timer esp_http_server
