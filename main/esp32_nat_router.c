@@ -43,9 +43,9 @@
 #endif
 #include "lwip/lwip_napt.h"
 
-#include "router_globals.h"
+#include "bt_globals.h"
 #include "bt_a2dp_sink.h"
-#include "cmd_router/router_globals.h"
+#include "router_globals.h"
 
 // On board LED
 #if defined(CONFIG_IDF_TARGET_ESP32S3)

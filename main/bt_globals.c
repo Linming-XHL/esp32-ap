@@ -1,5 +1,5 @@
 #include <string.h>
-#include "router_globals.h"
+#include "bt_globals.h"
 #include "esp_log.h"
 #include "nvs_flash.h"
 #include "nvs.h"

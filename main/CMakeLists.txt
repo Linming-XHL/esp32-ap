@@ -1,7 +1,7 @@
 idf_component_register(SRCS "esp32_nat_router.c"
                             "http_server.c"
                             "bt_a2dp_sink.c"
-                            "router_globals.c"
+                            "bt_globals.c"
                     INCLUDE_DIRS "."
                     EMBED_FILES "../www/index.html"
                     REQUIRES json esp_wifi console nvs_flash esp_timer esp_http_server bt

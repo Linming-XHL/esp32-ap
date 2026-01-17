@@ -9,6 +9,7 @@
 #include "esp_a2dp_api.h"
 #include "esp_log.h"
 #include "driver/dac.h"
+#include "bt_globals.h"
 
 #define TAG "A2DP_SINK"
 
@@ -131,7 +132,7 @@ void bt_a2dp_sink_init(void)
     
     // 配置A2DP接收器
     esp_a2d_sink_init();
-    esp_a2d_sink_register_callback(bt_a2d_sink_cb);
+    esp_a2d_register_callback(bt_a2d_sink_cb);
     esp_a2d_sink_register_data_callback(bt_a2d_sink_data_cb);
     
     // 配置蓝牙GAP
