@@ -150,32 +150,7 @@ setTimeout(\"location.href = '/'\",10000);\
 </small>\
 </form>\
 \
-<h2>Bluetooth Audio Settings</h2>\
-<form action='' method='GET'>\
-<table>\
-<tr>\
-<td>Bluetooth Enable</td>\
-<td>\
-<select name='bt_enabled'>\
-<option value='0'>Disabled</option>\
-<option value='1'>Enabled</option>\
-</select>\
-</td>\
-</tr>\
-<tr>\
-<td>Device Name</td>\
-<td><input type='text' name='bt_name' value='%s' placeholder='Bluetooth device name'/></td>\
-</tr>\
-<tr>\
-<td>Volume</td>\
-<td><input type='range' name='bt_volume' min='0' max='100' value='%d'/></td>\
-</tr>\
-<tr>\
-<td></td>\
-<td><input type='submit' value='Save Bluetooth Settings' class='ok-button'/></td>\
-</tr>\
-</table>\
-</form>\
+
 \
 <h2>Device Management</h2>\
 <form action='' method='GET'>\

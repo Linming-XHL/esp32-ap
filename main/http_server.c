@@ -24,8 +24,6 @@
 #include <esp_http_server.h>
 
 #include "pages.h"
-#include "bt_a2dp_sink.h"
-#include "bt_globals.h"
 #include "router_globals.h"
 
 // 外部函数声明
@@ -42,6 +40,12 @@ static const char *TAG = "HTTPServer";
 // 函数声明
 static esp_err_t modern_index_handler(httpd_req_t *req);
 static esp_err_t config_post_handler(httpd_req_t *req);
+static esp_err_t mp3_upload_handler(httpd_req_t *req);
+static esp_err_t stop_playback_handler(httpd_req_t *req);
+static esp_err_t delete_mp3_handler(httpd_req_t *req);
+
+// 外部函数声明
+#include "mp3_player.h"
 
 esp_timer_handle_t restart_timer;
 
@@ -162,37 +166,6 @@ static esp_err_t index_get_handler(httpd_req_t *req)
                     }
                 }
             }
-            // 处理蓝牙设置
-            char bt_param[64];
-            if (httpd_query_key_value(buf, "bt_enabled", bt_param, sizeof(bt_param)) == ESP_OK) {
-                bool enabled = (atoi(bt_param) != 0);
-                g_config.bluetooth.enabled = enabled;
-                ESP_LOGI(TAG, "Bluetooth enabled: %s", enabled ? "true" : "false");
-                
-                if (httpd_query_key_value(buf, "bt_name", bt_param, sizeof(bt_param)) == ESP_OK) {
-                    preprocess_string(bt_param);
-                    if (strlen(bt_param) > 0 && strlen(bt_param) < 32) {
-                        strcpy(g_config.bluetooth.device_name, bt_param);
-                        ESP_LOGI(TAG, "Bluetooth name: %s", bt_param);
-                    }
-                }
-                
-                if (httpd_query_key_value(buf, "bt_volume", bt_param, sizeof(bt_param)) == ESP_OK) {
-                    uint8_t volume = atoi(bt_param);
-                    if (volume <= 100) {
-                        g_config.bluetooth.volume = volume;
-                        ESP_LOGI(TAG, "Bluetooth volume: %d%%", volume);
-                    }
-                }
-                
-                // 保存配置到NVS
-                save_config_to_nvs();
-                
-                // 应用蓝牙配置
-                bt_a2dp_sink_set_enabled(g_config.bluetooth.enabled);
-                bt_a2dp_sink_set_name(g_config.bluetooth.device_name);
-                bt_a2dp_sink_set_volume(g_config.bluetooth.volume);
-            }
         }
         free(buf);
     }
@@ -230,10 +203,6 @@ static esp_err_t get_config_handler(httpd_req_t *req)
     cJSON_AddStringToObject(response, "ap_passwd", err4 == ESP_OK ? ap_passwd : "12345678");
     cJSON_AddStringToObject(response, "ap_mac", ""); // 默认空
     
-    // 添加蓝牙配置
-    cJSON_AddBoolToObject(response, "bt_enabled", g_config.bluetooth.enabled);
-    cJSON_AddStringToObject(response, "bt_name", g_config.bluetooth.device_name);
-    cJSON_AddNumberToObject(response, "bt_volume", g_config.bluetooth.volume);
 
     char *response_string = cJSON_Print(response);
 
@@ -372,64 +341,6 @@ static esp_err_t config_post_handler(httpd_req_t *req)
 
         free(mac_str);
     }
-    
-    /* 处理蓝牙配置 */
-    cJSON *bt_enabled = cJSON_GetObjectItem(json, "bt_enabled");
-    cJSON *bt_name = cJSON_GetObjectItem(json, "bt_name");
-    cJSON *bt_volume = cJSON_GetObjectItem(json, "bt_volume");
-    
-    bool bt_config_changed = false;
-    
-    if (bt_enabled != NULL) {
-        bool enabled = false;
-        if (cJSON_IsTrue(bt_enabled)) {
-            enabled = true;
-        } else if (cJSON_IsNumber(bt_enabled)) {
-            enabled = (bt_enabled->valuedouble != 0);
-        } else if (cJSON_IsString(bt_enabled)) {
-            enabled = (atoi(bt_enabled->valuestring) != 0);
-        }
-        if (g_config.bluetooth.enabled != enabled) {
-            g_config.bluetooth.enabled = enabled;
-            bt_config_changed = true;
-        }
-    }
-    
-    if (cJSON_IsString(bt_name) && strlen(bt_name->valuestring) > 0 && strlen(bt_name->valuestring) < 32) {
-        if (strcmp(g_config.bluetooth.device_name, bt_name->valuestring) != 0) {
-            strcpy(g_config.bluetooth.device_name, bt_name->valuestring);
-            bt_config_changed = true;
-        }
-    }
-    
-    if (bt_volume != NULL) {
-        int volume = 0;
-        if (cJSON_IsNumber(bt_volume)) {
-            volume = (int)bt_volume->valuedouble;
-        } else if (cJSON_IsString(bt_volume)) {
-            volume = atoi(bt_volume->valuestring);
-        }
-        if (volume >= 0 && volume <= 100) {
-            if (g_config.bluetooth.volume != (uint8_t)volume) {
-                g_config.bluetooth.volume = (uint8_t)volume;
-                bt_config_changed = true;
-            }
-        }
-    }
-    
-    if (bt_config_changed) {
-        // 保存蓝牙配置到NVS
-        save_config_to_nvs();
-        config_updated = true;
-        
-        // 应用蓝牙配置
-        bt_a2dp_sink_set_enabled(g_config.bluetooth.enabled);
-        bt_a2dp_sink_set_name(g_config.bluetooth.device_name);
-        bt_a2dp_sink_set_volume(g_config.bluetooth.volume);
-        
-        ESP_LOGI(TAG, "蓝牙配置已更新: 启用=%d, 名称=%s, 音量=%d%%", 
-                g_config.bluetooth.enabled, g_config.bluetooth.device_name, g_config.bluetooth.volume);
-    }
 
     /* 发送响应 */
     if (config_updated) {
@@ -458,8 +369,6 @@ static esp_err_t config_post_handler(httpd_req_t *req)
 
     return ESP_OK;
 }
-
-
 
 static httpd_uri_t config_post = {
     .uri       = "/config",
@@ -674,6 +583,11 @@ httpd_handle_t start_webserver(void)
         httpd_register_uri_handler(server, &modern_index);
         httpd_register_uri_handler(server, &config_get);
         httpd_register_uri_handler(server, &config_post);
+        
+        // MP3播放功能
+        httpd_register_uri_handler(server, &mp3_upload);
+        httpd_register_uri_handler(server, &stop_playback);
+        httpd_register_uri_handler(server, &delete_mp3);
 
         // 各种操作系统的连接检测URL
         httpd_register_uri_handler(server, &generate_204);    // Android
@@ -692,6 +606,126 @@ httpd_handle_t start_webserver(void)
     ESP_LOGI(TAG, "Error starting server!");
     return NULL;
 }
+
+// MP3上传处理程序
+static esp_err_t mp3_upload_handler(httpd_req_t *req)
+{
+    char filepath[128];
+    sprintf(filepath, "/data/upload.mp3");
+    
+    FILE *fp = fopen(filepath, "wb");
+    if (!fp) {
+        ESP_LOGE(TAG, "无法创建文件: %s", filepath);
+        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "无法创建文件");
+        return ESP_FAIL;
+    }
+    
+    char buf[512];
+    int ret, remaining = req->content_len;
+    
+    while (remaining > 0) {
+        ret = httpd_req_recv(req, buf, MIN(remaining, sizeof(buf)));
+        if (ret <= 0) {
+            if (ret == HTTPD_SOCK_ERR_TIMEOUT) {
+                httpd_resp_send_408(req);
+            }
+            fclose(fp);
+            unlink(filepath);
+            return ESP_FAIL;
+        }
+        
+        fwrite(buf, 1, ret, fp);
+        remaining -= ret;
+    }
+    
+    fclose(fp);
+    
+    // 开始播放MP3文件
+    if (mp3_player_play(filepath) != ESP_OK) {
+        ESP_LOGE(TAG, "播放MP3文件失败");
+        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "播放MP3文件失败");
+        return ESP_FAIL;
+    }
+    
+    // 发送响应
+    cJSON *response = cJSON_CreateObject();
+    cJSON_AddBoolToObject(response, "success", true);
+    cJSON_AddStringToObject(response, "message", "MP3文件上传成功并开始播放");
+    
+    char *response_string = cJSON_Print(response);
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_send(req, response_string, strlen(response_string));
+    
+    free(response_string);
+    cJSON_Delete(response);
+    
+    return ESP_OK;
+}
+
+// 停止播放处理程序
+static esp_err_t stop_playback_handler(httpd_req_t *req)
+{
+    if (mp3_player_stop() != ESP_OK) {
+        ESP_LOGE(TAG, "停止播放失败");
+        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "停止播放失败");
+        return ESP_FAIL;
+    }
+    
+    cJSON *response = cJSON_CreateObject();
+    cJSON_AddBoolToObject(response, "success", true);
+    cJSON_AddStringToObject(response, "message", "播放已停止");
+    
+    char *response_string = cJSON_Print(response);
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_send(req, response_string, strlen(response_string));
+    
+    free(response_string);
+    cJSON_Delete(response);
+    
+    return ESP_OK;
+}
+
+// 删除MP3文件处理程序
+static esp_err_t delete_mp3_handler(httpd_req_t *req)
+{
+    if (mp3_player_stop() != ESP_OK) {
+        ESP_LOGE(TAG, "删除文件失败");
+        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "删除文件失败");
+        return ESP_FAIL;
+    }
+    
+    cJSON *response = cJSON_CreateObject();
+    cJSON_AddBoolToObject(response, "success", true);
+    cJSON_AddStringToObject(response, "message", "MP3文件已删除");
+    
+    char *response_string = cJSON_Print(response);
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_send(req, response_string, strlen(response_string));
+    
+    free(response_string);
+    cJSON_Delete(response);
+    
+    return ESP_OK;
+}
+
+// 定义新的URI处理程序
+static httpd_uri_t mp3_upload = {
+    .uri       = "/upload_mp3",
+    .method    = HTTP_POST,
+    .handler   = mp3_upload_handler,
+};
+
+static httpd_uri_t stop_playback = {
+    .uri       = "/stop_playback",
+    .method    = HTTP_POST,
+    .handler   = stop_playback_handler,
+};
+
+static httpd_uri_t delete_mp3 = {
+    .uri       = "/delete_mp3",
+    .method    = HTTP_POST,
+    .handler   = delete_mp3_handler,
+};
 
 static void stop_webserver(httpd_handle_t server)
 {

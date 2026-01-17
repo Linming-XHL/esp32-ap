@@ -3,16 +3,21 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>ESP32配置</title>
+<title>ESP32配置与MP3播放</title>
 <style>
 body{font-family:sans-serif;margin:10px}
 input,select{width:98%;padding:5px;margin:5px 0}
-button{width:100%;padding:8px;background:green;color:white;border:none}
+button{width:100%;padding:8px;background:green;color:white;border:none;margin:5px 0}
 .status{padding:10px;margin:10px 0;text-align:center}
+.section{margin:20px 0;padding:10px;border:1px solid #ccc;border-radius:5px}
+#file-info{margin:10px 0;padding:10px;background:#f0f0f0}
 </style>
 </head>
 <body>
-<h1>ESP32配置</h1>
+<h1>ESP32配置与MP3播放</h1>
+
+<!-- 配置部分 -->
+<div class="section">
 <form id="f">
 <h3>上游网络</h3>
 <label>SSID:</label><input id="sta_ssid" name="sta_ssid" placeholder="Wi-Fi名称">
@@ -22,37 +27,154 @@ button{width:100%;padding:8px;background:green;color:white;border:none}
 <label>热点SSID:</label><input id="ap_ssid" name="ap_ssid" value="ESP32_Repeater">
 <label>热点密码:</label><input type="password" id="ap_password" name="ap_password" value="12345678">
 
-<h3>蓝牙设置</h3>
-<label>蓝牙:</label><select id="bt_enabled" name="bt_enabled">
-<option value="0">禁用</option>
-<option value="1">启用</option>
-</select>
-<label>蓝牙名称:</label><input id="bt_name" name="bt_name" value="ESP32_Audio">
-<label>音量:</label><input type="range" id="bt_volume" name="bt_volume" min="0" max="100" value="70">
-
 <button type="submit">保存并重启</button>
 <div id="s" class="status"></div>
 </form>
-<script>
-window.onload=function(){fetch('/config').then(r=>r.json()).then(d=>{
-if(d.ssid)document.getElementById('sta_ssid').value=d.ssid;
-if(d.passwd)document.getElementById('sta_password').value=d.passwd;
-if(d.ap_ssid)document.getElementById('ap_ssid').value=d.ap_ssid;
-if(d.ap_passwd)document.getElementById('ap_password').value=d.ap_passwd;
-if(d.bt_enabled!==undefined)document.getElementById('bt_enabled').value=d.bt_enabled?1:0;
-if(d.bt_name)document.getElementById('bt_name').value=d.bt_name;
-if(d.bt_volume!==undefined)document.getElementById('bt_volume').value=d.bt_volume;
-})};
+</div>
 
-function submit(e){e.preventDefault();
-const b=document.querySelector('button');
-const s=document.getElementById('s');
-b.disabled=true;
-b.textContent='保存中...';s.innerHTML='';
-const d={sta_ssid:document.getElementById('sta_ssid').value,sta_password:document.getElementById('sta_password').value,ap_ssid:document.getElementById('ap_ssid').value,ap_password:document.getElementById('ap_password').value,bt_enabled:document.getElementById('bt_enabled').value,bt_name:document.getElementById('bt_name').value,bt_volume:document.getElementById('bt_volume').value};
-fetch('/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)}).then(r=>r.json()).then(res=>{
-if(res.success){s.className='status';s.textContent='配置已保存，设备将重启';}else{s.className='status';s.textContent='保存失败';b.disabled=false;b.textContent='保存并重启';}}).catch(err=>{s.className='status';s.textContent='网络错误';b.disabled=false;b.textContent='保存并重启';});}
+<!-- MP3播放部分 -->
+<div class="section">
+<h3>MP3播放</h3>
+<form id="mp3-form">
+<label>选择MP3文件:</label><input type="file" id="mp3-file" name="mp3_file" accept=".mp3" required>
+<button type="submit">上传并播放</button>
+</form>
+<div id="file-info"></div>
+
+<button id="stop-play" disabled>停止播放</button>
+<button id="delete-file" disabled>删除文件</button>
+</div>
+
+<script>
+// 加载配置
+window.onload=function(){
+    fetch('/config').then(r=>r.json()).then(d=>{
+        if(d.ssid)document.getElementById('sta_ssid').value=d.ssid;
+        if(d.passwd)document.getElementById('sta_password').value=d.passwd;
+        if(d.ap_ssid)document.getElementById('ap_ssid').value=d.ap_ssid;
+        if(d.ap_passwd)document.getElementById('ap_password').value=d.ap_passwd;
+    });
+};
+
+// 保存配置
+function submit(e){
+    e.preventDefault();
+    const b=document.querySelector('button');
+    const s=document.getElementById('s');
+    b.disabled=true;
+    b.textContent='保存中...';
+    s.innerHTML='';
+    
+    const d={
+        sta_ssid:document.getElementById('sta_ssid').value,
+        sta_password:document.getElementById('sta_password').value,
+        ap_ssid:document.getElementById('ap_ssid').value,
+        ap_password:document.getElementById('ap_password').value
+    };
+    
+    fetch('/config',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify(d)
+    }).then(r=>r.json()).then(res=>{
+        if(res.success){
+            s.className='status';
+            s.textContent='配置已保存，设备将重启';
+        }else{
+            s.className='status';
+            s.textContent='保存失败';
+            b.disabled=false;
+            b.textContent='保存并重启';
+        }
+    }).catch(err=>{
+        s.className='status';
+        s.textContent='网络错误';
+        b.disabled=false;
+        b.textContent='保存并重启';
+    });
+}
+
 document.getElementById('f').addEventListener('submit',submit);
+
+// 上传MP3文件
+function uploadMp3(e){
+    e.preventDefault();
+    const fileInput = document.getElementById('mp3-file');
+    const file = fileInput.files[0];
+    
+    if(!file){
+        alert('请选择MP3文件');
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('mp3_file', file);
+    
+    const submitBtn = document.querySelector('#mp3-form button');
+    submitBtn.disabled = true;
+    submitBtn.textContent = '上传中...';
+    
+    fetch('/upload_mp3', {
+        method: 'POST',
+        body: formData
+    }).then(r => r.json()).then(res => {
+        submitBtn.disabled = false;
+        submitBtn.textContent = '上传并播放';
+        
+        if(res.success){
+            document.getElementById('file-info').textContent = '播放中: ' + file.name;
+            document.getElementById('stop-play').disabled = false;
+            document.getElementById('delete-file').disabled = false;
+        } else {
+            alert('上传失败: ' + res.error);
+        }
+    }).catch(err => {
+        submitBtn.disabled = false;
+        submitBtn.textContent = '上传并播放';
+        alert('上传失败: ' + err.message);
+    });
+}
+
+document.getElementById('mp3-form').addEventListener('submit', uploadMp3);
+
+// 停止播放
+function stopPlayback(){
+    fetch('/stop_playback', {
+        method: 'POST'
+    }).then(r => r.json()).then(res => {
+        if(res.success){
+            document.getElementById('file-info').textContent = '';
+            document.getElementById('stop-play').disabled = true;
+            document.getElementById('delete-file').disabled = true;
+        } else {
+            alert('停止播放失败: ' + res.error);
+        }
+    }).catch(err => {
+        alert('停止播放失败: ' + err.message);
+    });
+}
+
+document.getElementById('stop-play').addEventListener('click', stopPlayback);
+
+// 删除文件
+function deleteMp3File(){
+    fetch('/delete_mp3', {
+        method: 'POST'
+    }).then(r => r.json()).then(res => {
+        if(res.success){
+            document.getElementById('file-info').textContent = '';
+            document.getElementById('mp3-file').value = '';
+            document.getElementById('stop-play').disabled = true;
+            document.getElementById('delete-file').disabled = true;
+        } else {
+            alert('删除文件失败: ' + res.error);
+        }
+    }).catch(err => {
+        alert('删除文件失败: ' + err.message);
+    });
+}
+
+document.getElementById('delete-file').addEventListener('click', deleteMp3File);
 </script>
 </body>
 </html>

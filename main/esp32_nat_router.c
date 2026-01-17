@@ -43,8 +43,7 @@
 #endif
 #include "lwip/lwip_napt.h"
 
-#include "bt_globals.h"
-#include "bt_a2dp_sink.h"
+
 #include "router_globals.h"
 
 // On board LED
@@ -690,6 +689,14 @@ void app_main(void)
     ESP_LOGI(TAG, "Command history disabled");
 #endif
 
+    // 初始化MP3播放器
+    #include "mp3_player.h"
+    if (mp3_player_init() != ESP_OK) {
+        ESP_LOGE(TAG, "MP3播放器初始化失败");
+    } else {
+        ESP_LOGI(TAG, "MP3播放器初始化成功");
+    }
+
     get_config_param_blob("mac", &mac, 6);
     get_config_param_str("ssid", &ssid);
     if (ssid == NULL) {
@@ -735,19 +742,8 @@ void app_main(void)
 
     get_portmap_tab();
 
-    // Initialize global configuration
-    init_global_config();
-
-    // Setup WIFI first
+    // Setup WIFI
     wifi_init(mac, ssid, ent_username, ent_identity, passwd, static_ip, subnet_mask, gateway_addr, ap_mac, ap_ssid, ap_passwd, ap_ip);
-
-    // Apply Bluetooth configuration after WiFi is initialized
-    ESP_LOGI(TAG, "开始应用蓝牙配置: 启用=%d, 名称=%s, 音量=%d%%", 
-            g_config.bluetooth.enabled, g_config.bluetooth.device_name, g_config.bluetooth.volume);
-    bt_a2dp_sink_set_name(g_config.bluetooth.device_name);
-    bt_a2dp_sink_set_volume(g_config.bluetooth.volume);
-    bt_a2dp_sink_set_enabled(g_config.bluetooth.enabled);
-    ESP_LOGI(TAG, "蓝牙配置应用完成");
 
     pthread_t t1, t2;
     pthread_create(&t1, NULL, led_status_thread, NULL);
