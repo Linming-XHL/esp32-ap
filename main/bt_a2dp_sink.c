@@ -20,6 +20,8 @@
 #define DAC_CHANNEL DAC_CHAN_0  // IO26 (DAC通道0对应IO26)
 #define DAC_MAX_VALUE 255
 
+#ifdef CONFIG_BT_A2DP_SINK_ENABLED
+
 // DAC Oneshot配置
 static dac_oneshot_handle_t dac_oneshot = NULL;
 static dac_oneshot_config_t dac_config = {
@@ -29,8 +31,6 @@ static dac_oneshot_config_t dac_config = {
 static bool bt_enabled = false;
 static char bt_device_name[32] = "ESP32_Audio";
 static uint8_t bt_volume = 70;  // 0-100
-
-#ifdef CONFIG_BT_A2DP_SINK_ENABLED
 
 // A2DP回调函数
 static void bt_a2d_sink_cb(esp_a2d_cb_event_t event, esp_a2d_cb_param_t *param)
