@@ -26,6 +26,7 @@
 #include "pages.h"
 #include "bt_a2dp_sink.h"
 #include "router_globals.h"
+#include "cmd_router/router_globals.h"
 
 // 外部函数声明
 extern int set_ap(int argc, char **argv);

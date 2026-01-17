@@ -2,6 +2,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include "esp_err.h"
 
 // 蓝牙配置结构体
 typedef struct {

@@ -7,7 +7,6 @@
 #include "esp_bt_device.h"
 #include "esp_gap_bt_api.h"
 #include "esp_a2dp_api.h"
-#include "esp_a2dp_sink_api.h"
 #include "esp_log.h"
 #include "driver/dac.h"
 
