@@ -738,15 +738,16 @@ void app_main(void)
     // Initialize global configuration
     init_global_config();
 
-    // Apply Bluetooth configuration
-    bt_a2dp_sink_set_enabled(g_config.bluetooth.enabled);
+    // Setup WIFI first
+    wifi_init(mac, ssid, ent_username, ent_identity, passwd, static_ip, subnet_mask, gateway_addr, ap_mac, ap_ssid, ap_passwd, ap_ip);
+
+    // Apply Bluetooth configuration after WiFi is initialized
+    ESP_LOGI(TAG, "开始应用蓝牙配置: 启用=%d, 名称=%s, 音量=%d%%", 
+            g_config.bluetooth.enabled, g_config.bluetooth.device_name, g_config.bluetooth.volume);
     bt_a2dp_sink_set_name(g_config.bluetooth.device_name);
     bt_a2dp_sink_set_volume(g_config.bluetooth.volume);
-    ESP_LOGI(TAG, "蓝牙配置已应用: 启用=%d, 名称=%s, 音量=%d%%", 
-            g_config.bluetooth.enabled, g_config.bluetooth.device_name, g_config.bluetooth.volume);
-
-    // Setup WIFI
-    wifi_init(mac, ssid, ent_username, ent_identity, passwd, static_ip, subnet_mask, gateway_addr, ap_mac, ap_ssid, ap_passwd, ap_ip);
+    bt_a2dp_sink_set_enabled(g_config.bluetooth.enabled);
+    ESP_LOGI(TAG, "蓝牙配置应用完成");
 
     pthread_t t1, t2;
     pthread_create(&t1, NULL, led_status_thread, NULL);
