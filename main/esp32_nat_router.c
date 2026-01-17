@@ -756,13 +756,6 @@ void app_main(void)
     if (strcmp(lock, "0") ==0) {
         ESP_LOGI(TAG,"Starting config web server");
         start_webserver();
-        
-        // 根据配置初始化蓝牙功能
-        if (g_config.bluetooth.enabled) {
-            bt_a2dp_sink_set_name(g_config.bluetooth.device_name);
-            bt_a2dp_sink_set_volume(g_config.bluetooth.volume);
-            bt_a2dp_sink_init();
-        }
     }
     free(lock);
 

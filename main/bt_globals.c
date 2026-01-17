@@ -13,8 +13,8 @@ global_config_t g_config;
 // 初始化全局配置
 void init_global_config(void)
 {
-    // 蓝牙默认配置
-    g_config.bluetooth.enabled = true;
+    // 蓝牙默认配置 - 禁用以减少IRAM使用
+    g_config.bluetooth.enabled = false;
     strcpy(g_config.bluetooth.device_name, "ESP32_Audio");
     g_config.bluetooth.volume = 70;
     
