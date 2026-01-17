@@ -1,132 +1,58 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ESP32配置</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 20px; }
-        .container { max-width: 500px; margin: 0 auto; }
-        h1 { text-align: center; }
-        .section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; }
-        .form-group { margin: 15px 0; }
-        label { display: block; margin: 5px 0; }
-        input, select { width: 100%; padding: 8px; box-sizing: border-box; }
-        button { width: 100%; padding: 10px; background: #4CAF50; color: white; border: none; cursor: pointer; }
-        .status { margin: 15px 0; padding: 10px; text-align: center; }
-        .success { background: #d4edda; color: #155724; }
-        .error { background: #f8d7da; color: #721c24; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ESP32配置</title>
+<style>
+body{font-family:sans-serif;margin:10px}
+input,select{width:98%;padding:5px;margin:5px 0}
+button{width:100%;padding:8px;background:green;color:white;border:none}
+.status{padding:10px;margin:10px 0;text-align:center}
+</style>
 </head>
 <body>
-    <div class="container">
-        <h1>ESP32中继器配置</h1>
-        <form id="form">
-            <div class="section">
-                <h3>上游网络</h3>
-                <div class="form-group">
-                    <label>SSID:</label>
-                    <input type="text" id="sta_ssid" name="sta_ssid" placeholder="Wi-Fi名称">
-                </div>
-                <div class="form-group">
-                    <label>密码:</label>
-                    <input type="password" id="sta_password" name="sta_password">
-                </div>
-            </div>
-            
-            <div class="section">
-                <h3>热点设置</h3>
-                <div class="form-group">
-                    <label>热点SSID:</label>
-                    <input type="text" id="ap_ssid" name="ap_ssid" value="ESP32_Repeater">
-                </div>
-                <div class="form-group">
-                    <label>热点密码:</label>
-                    <input type="password" id="ap_password" name="ap_password" value="12345678">
-                </div>
-            </div>
-            
-            <div class="section">
-                <h3>蓝牙设置</h3>
-                <div class="form-group">
-                    <label>蓝牙:</label>
-                    <select id="bt_enabled" name="bt_enabled">
-                        <option value="0">禁用</option>
-                        <option value="1">启用</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>蓝牙名称:</label>
-                    <input type="text" id="bt_name" name="bt_name" value="ESP32_Audio">
-                </div>
-                <div class="form-group">
-                    <label>音量:</label>
-                    <input type="range" id="bt_volume" name="bt_volume" min="0" max="100" value="70">
-                </div>
-            </div>
-            
-            <button type="submit">保存并重启</button>
-            <div id="status" class="status"></div>
-        </form>
-    </div>
-    
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // 加载配置
-            fetch('/config').then(r => r.json()).then(data => {
-                if(data.ssid) document.getElementById('sta_ssid').value = data.ssid;
-                if(data.passwd) document.getElementById('sta_password').value = data.passwd;
-                if(data.ap_ssid) document.getElementById('ap_ssid').value = data.ap_ssid;
-                if(data.ap_passwd) document.getElementById('ap_password').value = data.ap_passwd;
-                if(data.bt_enabled !== undefined) document.getElementById('bt_enabled').value = data.bt_enabled ? '1' : '0';
-                if(data.bt_name) document.getElementById('bt_name').value = data.bt_name;
-                if(data.bt_volume !== undefined) document.getElementById('bt_volume').value = data.bt_volume;
-            });
-        });
-        
-        document.getElementById('form').addEventListener('submit', function(e) {
-            e.preventDefault();
-            const btn = this.querySelector('button');
-            const status = document.getElementById('status');
-            
-            btn.disabled = true;
-            btn.textContent = '保存中...';
-            status.innerHTML = '';
-            
-            const data = {
-                sta_ssid: document.getElementById('sta_ssid').value,
-                sta_password: document.getElementById('sta_password').value,
-                ap_ssid: document.getElementById('ap_ssid').value,
-                ap_password: document.getElementById('ap_password').value,
-                bt_enabled: document.getElementById('bt_enabled').value,
-                bt_name: document.getElementById('bt_name').value,
-                bt_volume: document.getElementById('bt_volume').value
-            };
-            
-            fetch('/config', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
-            })
-            .then(r => r.json())
-            .then(res => {
-                if(res.success) {
-                    status.className = 'status success';
-                    status.textContent = '配置已保存，设备将重启';
-                } else {
-                    status.className = 'status error';
-                    status.textContent = '保存失败';
-                    btn.disabled = false;
-                    btn.textContent = '保存并重启';
-                }
-            })
-            .catch(err => {
-                status.className = 'status error';
-                status.textContent = '网络错误';
-                btn.disabled = false;
-                btn.textContent = '保存并重启';
-            });
-        });
-    </script>
+<h1>ESP32配置</h1>
+<form id="f">
+<h3>上游网络</h3>
+<label>SSID:</label><input id="sta_ssid" name="sta_ssid" placeholder="Wi-Fi名称">
+<label>密码:</label><input type="password" id="sta_password" name="sta_password">
+
+<h3>热点设置</h3>
+<label>热点SSID:</label><input id="ap_ssid" name="ap_ssid" value="ESP32_Repeater">
+<label>热点密码:</label><input type="password" id="ap_password" name="ap_password" value="12345678">
+
+<h3>蓝牙设置</h3>
+<label>蓝牙:</label><select id="bt_enabled" name="bt_enabled">
+<option value="0">禁用</option>
+<option value="1">启用</option>
+</select>
+<label>蓝牙名称:</label><input id="bt_name" name="bt_name" value="ESP32_Audio">
+<label>音量:</label><input type="range" id="bt_volume" name="bt_volume" min="0" max="100" value="70">
+
+<button type="submit">保存并重启</button>
+<div id="s" class="status"></div>
+</form>
+<script>
+window.onload=function(){fetch('/config').then(r=>r.json()).then(d=>{
+if(d.ssid)document.getElementById('sta_ssid').value=d.ssid;
+if(d.passwd)document.getElementById('sta_password').value=d.passwd;
+if(d.ap_ssid)document.getElementById('ap_ssid').value=d.ap_ssid;
+if(d.ap_passwd)document.getElementById('ap_password').value=d.ap_passwd;
+if(d.bt_enabled!==undefined)document.getElementById('bt_enabled').value=d.bt_enabled?1:0;
+if(d.bt_name)document.getElementById('bt_name').value=d.bt_name;
+if(d.bt_volume!==undefined)document.getElementById('bt_volume').value=d.bt_volume;
+})};
+
+function submit(e){e.preventDefault();
+const b=document.querySelector('button');
+const s=document.getElementById('s');
+b.disabled=true;
+b.textContent='保存中...';s.innerHTML='';
+const d={sta_ssid:document.getElementById('sta_ssid').value,sta_password:document.getElementById('sta_password').value,ap_ssid:document.getElementById('ap_ssid').value,ap_password:document.getElementById('ap_password').value,bt_enabled:document.getElementById('bt_enabled').value,bt_name:document.getElementById('bt_name').value,bt_volume:document.getElementById('bt_volume').value};
+fetch('/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)}).then(r=>r.json()).then(res=>{
+if(res.success){s.className='status';s.textContent='配置已保存，设备将重启';}else{s.className='status';s.textContent='保存失败';b.disabled=false;b.textContent='保存并重启';}}).catch(err=>{s.className='status';s.textContent='网络错误';b.disabled=false;b.textContent='保存并重启';});}
+document.getElementById('f').addEventListener('submit',submit);
+</script>
 </body>
 </html>
