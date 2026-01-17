@@ -61,12 +61,9 @@ static void bt_a2d_sink_cb(esp_a2d_cb_event_t event, esp_a2d_cb_param_t *param)
 // A2DP音频数据回调
 static void bt_a2d_sink_data_cb(uint16_t event, esp_a2d_audio_buff_t *audio_buf)
 {
-    if (!audio_buf) {
-        return;
-    }
-    
-    // 临时实现：仅释放缓冲区
-    esp_a2d_audio_buff_free(audio_buf);
+    // 空实现，避免编译错误
+    (void)event;
+    (void)audio_buf;
 }
 
 // 初始化DAC
