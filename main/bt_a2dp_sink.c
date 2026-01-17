@@ -141,8 +141,8 @@ void bt_a2dp_sink_init(void)
     
     // 配置A2DP接收器
     esp_a2d_sink_init();
-    esp_a2d_sink_register_callback(bt_a2d_sink_cb);
-    esp_a2d_sink_register_data_callback(bt_a2d_sink_data_cb);
+    esp_a2d_register_callback(bt_a2d_sink_cb);
+    esp_a2d_sink_register_audio_data_callback(bt_a2d_sink_data_cb);
     
     // 配置蓝牙GAP
     esp_bt_gap_register_callback(NULL);
