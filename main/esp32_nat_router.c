@@ -56,8 +56,6 @@
 #define BLINK_GPIO 2
 #endif
 
-#define TAG "ESP32_NAT_Router"
-
 // FM音频输出任务
 #define FM_AUDIO_TASK_STACK_SIZE 4096
 #define FM_AUDIO_TASK_PRIORITY 6
