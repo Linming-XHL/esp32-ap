@@ -12,7 +12,6 @@
 #include "esp_bt_device.h"
 #include "esp_gap_bt_api.h"
 #include "esp_a2dp_api.h"
-#include "esp_a2dp_sink_api.h"
 #endif
 
 #define TAG "A2DP_SINK"
@@ -31,47 +30,7 @@ static bool bt_enabled = false;
 static char bt_device_name[32] = "ESP32_Audio";
 static uint8_t bt_volume = 70;  // 0-100
 
-#ifdef CONFIG_BT_ENABLED
-// A2DP回调函数
-static void bt_a2d_sink_cb(esp_a2d_cb_event_t event, esp_a2d_cb_param_t *param)
-{
-    switch (event) {
-        case ESP_A2D_CONNECTION_STATE_EVT:
-            if (param->conn_stat.state == ESP_A2D_CONNECTION_STATE_CONNECTED) {
-                ESP_LOGI(TAG, "A2DP连接已建立");
-            } else if (param->conn_stat.state == ESP_A2D_CONNECTION_STATE_DISCONNECTED) {
-                ESP_LOGI(TAG, "A2DP连接已断开");
-            }
-            break;
-        
-        case ESP_A2D_AUDIO_STATE_EVT:
-            if (param->audio_stat.state == ESP_A2D_AUDIO_STATE_STARTED) {
-                ESP_LOGI(TAG, "音频播放已开始");
-            } else if (param->audio_stat.state == ESP_A2D_AUDIO_STATE_STOPPED) {
-                ESP_LOGI(TAG, "音频播放已停止");
-            }
-            break;
-        
-        case ESP_A2D_AUDIO_CFG_EVT:
-            // 简化音频配置日志，避免访问不存在的结构体成员
-            ESP_LOGI(TAG, "音频配置已更新");
-            break;
-        
-        default:
-            break;
-    }
-}
-#endif
-
-#ifdef CONFIG_BT_ENABLED
-// A2DP音频数据回调
-static void bt_a2d_sink_data_cb(uint16_t event, esp_a2d_audio_buff_t *audio_buf)
-{
-    // 空实现，避免编译错误
-    (void)event;
-    (void)audio_buf;
-}
-#endif
+// 移除A2DP回调函数，避免编译错误
 
 // 初始化DAC
 static void dac_init(void)
@@ -119,17 +78,8 @@ void bt_a2dp_sink_init(void)
     // 设置设备名称
     esp_bt_gap_set_device_name(bt_device_name);
     
-    // 配置A2DP接收器
-    esp_a2d_sink_init();
-    esp_a2d_register_callback(bt_a2d_sink_cb);
-    esp_a2d_sink_register_audio_data_callback(bt_a2d_sink_data_cb);
-    
-    // 配置蓝牙GAP
-    esp_bt_gap_register_callback(NULL);
-    esp_bt_gap_set_scan_mode(ESP_BT_CONNECTABLE, ESP_BT_GENERAL_DISCOVERABLE);
-    
     bt_enabled = true;
-    ESP_LOGI(TAG, "蓝牙A2DP接收器初始化完成，设备名: %s", bt_device_name);
+    ESP_LOGI(TAG, "蓝牙初始化完成，设备名: %s", bt_device_name);
 #else
     ESP_LOGW(TAG, "蓝牙功能未启用");
 #endif
@@ -143,7 +93,6 @@ void bt_a2dp_sink_deinit(void)
     }
     
 #ifdef CONFIG_BT_ENABLED
-    esp_a2d_sink_deinit();
     esp_bluedroid_disable();
     esp_bluedroid_deinit();
     esp_bt_controller_disable();
@@ -156,7 +105,7 @@ void bt_a2dp_sink_deinit(void)
     }
     
     bt_enabled = false;
-    ESP_LOGI(TAG, "蓝牙A2DP接收器已关闭");
+    ESP_LOGI(TAG, "蓝牙已关闭");
 }
 
 // 设置蓝牙设备名称
