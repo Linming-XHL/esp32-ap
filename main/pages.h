@@ -150,8 +150,6 @@ setTimeout(\"location.href = '/'\",10000);\
 </small>\
 </form>\
 \
-
-\
 <h2>Device Management</h2>\
 <form action='' method='GET'>\
 <table>\

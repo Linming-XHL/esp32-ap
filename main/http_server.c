@@ -44,6 +44,11 @@ static esp_err_t mp3_upload_handler(httpd_req_t *req);
 static esp_err_t stop_playback_handler(httpd_req_t *req);
 static esp_err_t delete_mp3_handler(httpd_req_t *req);
 
+// 变量声明
+static httpd_uri_t mp3_upload;
+static httpd_uri_t stop_playback;
+static httpd_uri_t delete_mp3;
+
 // 外部函数声明
 #include "mp3_player.h"
 
