@@ -16,9 +16,9 @@ jobs:
       uses: actions/checkout@v4
       
     - name: Build project
-      uses: docker://espressif/idf:v5.4.4
+      uses: docker://espressif/idf:v5.5
       with:
-        args: bash -c "idf.py -DSDKCONFIG=sdkconfig build"
+        args: bash -c "idf.py fullclean && idf.py build"
       
     - name: Upload binaries
       uses: actions/upload-artifact@v4
