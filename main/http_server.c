@@ -381,7 +381,14 @@ static esp_err_t config_post_handler(httpd_req_t *req)
     bool bt_config_changed = false;
     
     if (bt_enabled != NULL) {
-        bool enabled = cJSON_IsTrue(bt_enabled) || (cJSON_IsNumber(bt_enabled) && bt_enabled->valuedouble != 0);
+        bool enabled = false;
+        if (cJSON_IsTrue(bt_enabled)) {
+            enabled = true;
+        } else if (cJSON_IsNumber(bt_enabled)) {
+            enabled = (bt_enabled->valuedouble != 0);
+        } else if (cJSON_IsString(bt_enabled)) {
+            enabled = (atoi(bt_enabled->valuestring) != 0);
+        }
         if (g_config.bluetooth.enabled != enabled) {
             g_config.bluetooth.enabled = enabled;
             bt_config_changed = true;
@@ -395,8 +402,13 @@ static esp_err_t config_post_handler(httpd_req_t *req)
         }
     }
     
-    if (cJSON_IsNumber(bt_volume)) {
-        int volume = (int)bt_volume->valuedouble;
+    if (bt_volume != NULL) {
+        int volume = 0;
+        if (cJSON_IsNumber(bt_volume)) {
+            volume = (int)bt_volume->valuedouble;
+        } else if (cJSON_IsString(bt_volume)) {
+            volume = atoi(bt_volume->valuestring);
+        }
         if (volume >= 0 && volume <= 100) {
             if (g_config.bluetooth.volume != (uint8_t)volume) {
                 g_config.bluetooth.volume = (uint8_t)volume;
