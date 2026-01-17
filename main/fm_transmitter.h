@@ -5,7 +5,7 @@
 #include <stdbool.h>
 
 // 配置
-#define FM_FREQUENCY 93500000  // 93.5MHz
+#define FM_FREQUENCY 85000000  // 85.0MHz
 #define FM_PWM_PIN 27          // 使用GPIO27作为PWM输出
 
 // 初始化FM发射器
