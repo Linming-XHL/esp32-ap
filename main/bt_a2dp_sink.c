@@ -13,7 +13,7 @@
 #define TAG "A2DP_SINK"
 
 // DAC配置
-#define DAC_CHANNEL DAC_CHANNEL_1  // IO26
+#define DAC_CHANNEL DAC_CHAN_0  // IO26 (DAC通道0对应IO26)
 #define DAC_MAX_VALUE 255
 
 static bool bt_enabled = false;
@@ -53,7 +53,6 @@ static void bt_a2d_sink_cb(esp_a2d_cb_event_t event, esp_a2d_cb_param_t *param)
 // A2DP音频数据回调
 static void bt_a2d_sink_data_cb(const uint8_t *data, uint32_t len)
 {
-    static int16_t sample_buffer[2048];
     static uint8_t dac_output[2048];
     int sample_count;
     int i;
@@ -83,7 +82,7 @@ static void bt_a2d_sink_data_cb(const uint8_t *data, uint32_t len)
     for (i = 0; i < sample_count; i++) {
         dac_output_voltage(DAC_CHANNEL, dac_output[i]);
         // 简单的延迟以匹配采样率
-        ets_delay_us(22);  // 约44.1kHz采样率
+        esp_rom_delay_us(22);  // 约44.1kHz采样率
     }
 }
 
@@ -128,7 +127,7 @@ void bt_a2dp_sink_init(void)
     }
     
     // 设置设备名称
-    esp_bt_dev_set_device_name(bt_device_name);
+    esp_bt_gap_set_device_name(bt_device_name);
     
     // 配置A2DP接收器
     esp_a2d_sink_init();
@@ -168,7 +167,7 @@ void bt_a2dp_sink_set_name(const char *name)
     if (name && strlen(name) > 0 && strlen(name) < 32) {
         strcpy(bt_device_name, name);
         if (bt_enabled) {
-            esp_bt_dev_set_device_name(bt_device_name);
+            esp_bt_gap_set_device_name(bt_device_name);
         }
         ESP_LOGI(TAG, "蓝牙设备名已设置为: %s", bt_device_name);
     }
