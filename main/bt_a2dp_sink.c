@@ -59,21 +59,23 @@ static void bt_a2d_sink_cb(esp_a2d_cb_event_t event, esp_a2d_cb_param_t *param)
 }
 
 // A2DP音频数据回调
-static void bt_a2d_sink_data_cb(const uint8_t *data, uint32_t len)
+static void bt_a2d_sink_data_cb(uint16_t event, esp_a2d_audio_buff_t *audio_buf)
 {
-    static uint8_t dac_output[2048];
-    int sample_count;
-    int i;
-    
-    if (len == 0) {
+    if (!audio_buf || !audio_buf->len) {
         return;
     }
+    
+    static uint8_t dac_output[2048];
+    const uint8_t *data = audio_buf->data;
+    uint32_t len = audio_buf->len;
+    int sample_count;
+    int i;
     
     // 解析PCM数据 (16位立体声)
     sample_count = len / 4;  // 每个立体声样本4字节
     
     // 转换为单声道并调整音量
-    for (i = 0; i < sample_count; i++) {
+    for (i = 0; i < sample_count && i < sizeof(dac_output); i++) {
         // 取左声道样本
         int16_t left_sample = ((int16_t)data[i*4 + 1] << 8) | data[i*4];
         // 取右声道样本
@@ -87,11 +89,14 @@ static void bt_a2d_sink_data_cb(const uint8_t *data, uint32_t len)
     }
     
     // 通过DAC输出音频
-    for (i = 0; i < sample_count; i++) {
+    for (i = 0; i < sample_count && i < sizeof(dac_output); i++) {
         dac_oneshot_output_voltage(dac_oneshot, dac_output[i]);
         // 简单的延迟以匹配采样率
         esp_rom_delay_us(22);  // 约44.1kHz采样率
     }
+    
+    // 释放音频缓冲区
+    esp_a2d_audio_buff_free(audio_buf);
 }
 
 // 初始化DAC
