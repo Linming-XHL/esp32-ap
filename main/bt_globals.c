@@ -14,7 +14,7 @@ global_config_t g_config;
 void init_global_config(void)
 {
     // 蓝牙默认配置
-    g_config.bluetooth.enabled = false;
+    g_config.bluetooth.enabled = true;
     strcpy(g_config.bluetooth.device_name, "ESP32_Audio");
     g_config.bluetooth.volume = 70;
     
