@@ -6,21 +6,17 @@
 #include "driver/dac_oneshot.h"
 #include "bt_globals.h"
 
-#ifdef CONFIG_BT_A2DP_SINK_ENABLED
 #include "esp_bt.h"
 #include "esp_bt_main.h"
 #include "esp_bt_device.h"
 #include "esp_gap_bt_api.h"
 #include "esp_a2dp_api.h"
-#endif
 
 #define TAG "A2DP_SINK"
 
 // DAC配置
 #define DAC_CHANNEL DAC_CHAN_0  // IO26 (DAC通道0对应IO26)
 #define DAC_MAX_VALUE 255
-
-#ifdef CONFIG_BT_A2DP_SINK_ENABLED
 
 // DAC Oneshot配置
 static dac_oneshot_handle_t dac_oneshot = NULL;
@@ -227,47 +223,3 @@ uint8_t bt_a2dp_sink_get_volume(void)
     return bt_volume;
 }
 
-#else // CONFIG_BT_A2DP_SINK_ENABLED
-
-// 当蓝牙A2DP SINK功能未启用时，提供空实现
-void bt_a2dp_sink_init(void)
-{
-    ESP_LOGW(TAG, "蓝牙A2DP SINK功能未启用");
-}
-
-void bt_a2dp_sink_deinit(void)
-{
-    ESP_LOGW(TAG, "蓝牙A2DP SINK功能未启用");
-}
-
-void bt_a2dp_sink_set_name(const char *name)
-{
-    ESP_LOGW(TAG, "蓝牙A2DP SINK功能未启用");
-}
-
-void bt_a2dp_sink_set_volume(uint8_t volume)
-{
-    ESP_LOGW(TAG, "蓝牙A2DP SINK功能未启用");
-}
-
-void bt_a2dp_sink_set_enabled(bool enabled)
-{
-    ESP_LOGW(TAG, "蓝牙A2DP SINK功能未启用");
-}
-
-bool bt_a2dp_sink_is_enabled(void)
-{
-    return false;
-}
-
-const char *bt_a2dp_sink_get_name(void)
-{
-    return "ESP32_Audio";
-}
-
-uint8_t bt_a2dp_sink_get_volume(void)
-{
-    return 70;
-}
-
-#endif // CONFIG_BT_A2DP_SINK_ENABLED
