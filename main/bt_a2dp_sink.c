@@ -76,7 +76,9 @@ void bt_a2dp_sink_init(void)
     }
     
     // 设置设备名称
+    #ifdef CONFIG_BT_GAP_ENABLED
     esp_bt_gap_set_device_name(bt_device_name);
+    #endif
     
     bt_enabled = true;
     ESP_LOGI(TAG, "蓝牙初始化完成，设备名: %s", bt_device_name);
@@ -114,9 +116,11 @@ void bt_a2dp_sink_set_name(const char *name)
     if (name && strlen(name) > 0 && strlen(name) < 32) {
         strcpy(bt_device_name, name);
 #ifdef CONFIG_BT_ENABLED
+        #ifdef CONFIG_BT_GAP_ENABLED
         if (bt_enabled) {
             esp_bt_gap_set_device_name(bt_device_name);
         }
+        #endif
 #endif
         ESP_LOGI(TAG, "蓝牙设备名已设置为: %s", bt_device_name);
     }
