@@ -6,16 +6,15 @@
 #include "freertos/task.h"
 #include "esp_log.h"
 #include "driver/gpio.h"
-#include "driver/rmt.h"
+#include "driver/rmt_tx.h"
 #include "fm_transmitter.h"
 
 // 配置
 #define TAG "FM_TRANSMITTER"
 
 // RMT配置
-#define RMT_CHANNEL RMT_CHANNEL_0
+#define RMT_CHANNEL RMT_TX_CHANNEL_0
 #define RMT_RESOLUTION_HZ 100000000  // 100MHz分辨率
-#define RMT_CLOCK_DIVIDER 1          // 时钟分频
 #define RMT_MEM_BLOCK_NUM 1          // 内存块数量
 
 // 音频配置
@@ -28,20 +27,18 @@
 
 // 状态
 static bool is_enabled = false;
-static rmt_config_t rmt_config = {
-    .rmt_mode = RMT_MODE_TX,
-    .channel = RMT_CHANNEL,
+static rmt_tx_channel_handle_t tx_channel = NULL;
+static rmt_tx_channel_config_t tx_config = {
     .gpio_num = FM_PWM_PIN,
-    .clk_div = RMT_CLOCK_DIVIDER,
-    .mem_block_num = RMT_MEM_BLOCK_NUM,
-    .tx_config = {
-        .carrier_en = false,
-        .loop_en = false,
-        .idle_output_en = true,
-        .idle_level = RMT_IDLE_LEVEL_LOW,
-    },
     .clk_src = RMT_CLK_SRC_DEFAULT,
     .resolution_hz = RMT_RESOLUTION_HZ,
+    .mem_block_symbols = 64,
+    .trans_queue_depth = 10,
+    .flags = {
+        .invert_out = false,
+        .with_carrier = false,
+        .io_loop_back = false,
+    },
 };
 
 // 初始化FM发射器
@@ -49,15 +46,15 @@ esp_err_t fm_transmitter_init(void)
 {
     ESP_LOGI(TAG, "初始化FM发射器");
     
-    // 配置RMT
-    if (rmt_config(&rmt_config) != ESP_OK) {
-        ESP_LOGE(TAG, "RMT配置失败");
+    // 创建RMT TX通道
+    if (rmt_new_tx_channel(&tx_config, &tx_channel) != ESP_OK) {
+        ESP_LOGE(TAG, "创建RMT TX通道失败");
         return ESP_FAIL;
     }
     
-    // 安装RMT驱动
-    if (rmt_driver_install(RMT_CHANNEL, 0, 0) != ESP_OK) {
-        ESP_LOGE(TAG, "RMT驱动安装失败");
+    // 启动RMT TX通道
+    if (rmt_tx_start(tx_channel, NULL, 0, false) != ESP_OK) {
+        ESP_LOGE(TAG, "启动RMT TX通道失败");
         return ESP_FAIL;
     }
     
@@ -77,7 +74,7 @@ esp_err_t fm_transmitter_set_frequency(uint32_t frequency)
 // 发送音频信号到FM发射器
 esp_err_t fm_transmitter_send_sample(uint8_t audio_sample)
 {
-    if (!is_enabled) {
+    if (!is_enabled || tx_channel == NULL) {
         return ESP_OK;
     }
     
@@ -93,7 +90,7 @@ esp_err_t fm_transmitter_send_sample(uint8_t audio_sample)
     uint32_t half_period_ns = period_ns / 2;
     
     // 准备RMT信号数据
-    rmt_item32_t items[2] = {
+    rmt_symbol_word_t items[2] = {
         {
             .duration0 = half_period_ns,
             .level0 = 1,
@@ -109,7 +106,7 @@ esp_err_t fm_transmitter_send_sample(uint8_t audio_sample)
     };
     
     // 发送RMT信号
-    if (rmt_write_items(RMT_CHANNEL, items, 2, false) != ESP_OK) {
+    if (rmt_write_sample(tx_channel, items, 2, false) != ESP_OK) {
         ESP_LOGE(TAG, "发送RMT信号失败");
         return ESP_FAIL;
     }
