@@ -16,7 +16,7 @@
 #define LEDC_TIMER LEDC_TIMER_0
 #define LEDC_MODE LEDC_HIGH_SPEED_MODE
 #define LEDC_CHANNEL LEDC_CHANNEL_0
-#define LEDC_DUTY_RES LEDC_TIMER_8_BIT  // 8位占空比
+#define LEDC_DUTY_RES LEDC_TIMER_5_BIT  // 5位占空比，以达到更高的频率
 
 // 音频配置
 #define AUDIO_SAMPLE_RATE 44100
@@ -63,7 +63,7 @@ esp_err_t fm_transmitter_init(void)
     }
     
     // 设置占空比为50%
-    if (ledc_set_duty(LEDC_MODE, LEDC_CHANNEL, 128) != ESP_OK) {
+    if (ledc_set_duty(LEDC_MODE, LEDC_CHANNEL, 16) != ESP_OK) {
         ESP_LOGE(TAG, "设置LEDC占空比失败");
         return ESP_FAIL;
     }
