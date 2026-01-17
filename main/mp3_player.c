@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_log.h"
@@ -56,12 +57,29 @@ static void mp3_play_task(void* arg)
     
     ESP_LOGI(TAG, "开始播放MP3文件: %s", file_path);
     
-    // 这里需要实现MP3解码和播放逻辑
-    // 由于实现完整的MP3解码比较复杂，这里先实现一个占位符
-    // 实际项目中需要使用ESP-IDF的音频组件（如audio_pipeline、esp_audio等）
+    // 这里实现一个简单的音频输出测试，产生正弦波
+    // 实际项目中需要使用ESP-IDF的音频组件（如audio_pipeline、esp_audio等）实现MP3解码
     
-    // 模拟播放过程
-    vTaskDelay(5000 / portTICK_PERIOD_MS);
+    // 产生1kHz的正弦波
+    const int sample_rate = 44100; // 采样率
+    const float frequency = 1000.0f; // 频率
+    const int duration = 10000; // 持续时间（毫秒）
+    const int sample_count = (sample_rate * duration) / 1000;
+    
+    float amplitude = DAC_MAX_VALUE / 2.0f;
+    float offset = DAC_MAX_VALUE / 2.0f;
+    
+    for (int i = 0; i < sample_count; i++) {
+        // 计算正弦波值
+        float t = (float)i / sample_rate;
+        float value = offset + amplitude * sin(2 * M_PI * frequency * t);
+        
+        // 输出到DAC
+        dac_oneshot_output_voltage(dac_oneshot, (uint8_t)value);
+        
+        // 延迟以达到采样率
+        vTaskDelay(1000 / sample_rate);
+    }
     
     fclose(fp);
     ESP_LOGI(TAG, "MP3播放完成");
@@ -73,6 +91,9 @@ static void mp3_play_task(void* arg)
     } else {
         ESP_LOGE(TAG, "删除MP3文件失败: %s", file_path);
     }
+    
+    // 恢复中点电压（静音）
+    dac_oneshot_output_voltage(dac_oneshot, DAC_MAX_VALUE / 2);
     
     is_playing = false;
     vTaskDelete(NULL);
