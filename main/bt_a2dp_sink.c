@@ -2,14 +2,17 @@
 #include <string.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "esp_log.h"
+#include "driver/dac_oneshot.h"
+#include "bt_globals.h"
+
+#ifdef CONFIG_BT_A2DP_SINK_ENABLED
 #include "esp_bt.h"
 #include "esp_bt_main.h"
 #include "esp_bt_device.h"
 #include "esp_gap_bt_api.h"
 #include "esp_a2dp_api.h"
-#include "esp_log.h"
-#include "driver/dac.h"
-#include "bt_globals.h"
+#endif
 
 #define TAG "A2DP_SINK"
 
@@ -17,9 +20,19 @@
 #define DAC_CHANNEL DAC_CHAN_0  // IO26 (DAC通道0对应IO26)
 #define DAC_MAX_VALUE 255
 
+// DAC Oneshot配置
+static dac_oneshot_handle_t dac_oneshot = NULL;
+static dac_oneshot_config_t dac_config = {
+    .chan_id = DAC_CHANNEL,
+    .bit_width = DAC_BIT_WIDTH_8,
+    .clk_src = DAC_ONESHOT_CLK_SRC_DEFAULT,
+};
+
 static bool bt_enabled = false;
 static char bt_device_name[32] = "ESP32_Audio";
 static uint8_t bt_volume = 70;  // 0-100
+
+#ifdef CONFIG_BT_A2DP_SINK_ENABLED
 
 // A2DP回调函数
 static void bt_a2d_sink_cb(esp_a2d_cb_event_t event, esp_a2d_cb_param_t *param)
@@ -81,7 +94,7 @@ static void bt_a2d_sink_data_cb(const uint8_t *data, uint32_t len)
     
     // 通过DAC输出音频
     for (i = 0; i < sample_count; i++) {
-        dac_output_voltage(DAC_CHANNEL, dac_output[i]);
+        dac_oneshot_output_voltage(dac_oneshot, dac_output[i]);
         // 简单的延迟以匹配采样率
         esp_rom_delay_us(22);  // 约44.1kHz采样率
     }
@@ -90,8 +103,10 @@ static void bt_a2d_sink_data_cb(const uint8_t *data, uint32_t len)
 // 初始化DAC
 static void dac_init(void)
 {
-    dac_output_enable(DAC_CHANNEL);
-    dac_output_voltage(DAC_CHANNEL, DAC_MAX_VALUE / 2);  // 设置初始电压为中点
+    // 创建DAC通道
+    dac_oneshot_new_channel(&dac_config, &dac_oneshot);
+    // 输出中点电压
+    dac_oneshot_output_voltage(dac_oneshot, DAC_MAX_VALUE / 2);
     ESP_LOGI(TAG, "DAC初始化完成，输出通道: %d (IO26)", DAC_CHANNEL);
 }
 
@@ -132,7 +147,7 @@ void bt_a2dp_sink_init(void)
     
     // 配置A2DP接收器
     esp_a2d_sink_init();
-    esp_a2d_register_callback(bt_a2d_sink_cb);
+    esp_a2d_sink_register_callback(bt_a2d_sink_cb);
     esp_a2d_sink_register_data_callback(bt_a2d_sink_data_cb);
     
     // 配置蓝牙GAP
@@ -156,7 +171,10 @@ void bt_a2dp_sink_deinit(void)
     esp_bt_controller_disable();
     esp_bt_controller_deinit();
     
-    dac_output_disable(DAC_CHANNEL);
+    if (dac_oneshot) {
+        dac_oneshot_del_channel(dac_oneshot);
+        dac_oneshot = NULL;
+    }
     
     bt_enabled = false;
     ESP_LOGI(TAG, "蓝牙A2DP接收器已关闭");
@@ -210,3 +228,48 @@ uint8_t bt_a2dp_sink_get_volume(void)
 {
     return bt_volume;
 }
+
+#else // CONFIG_BT_A2DP_SINK_ENABLED
+
+// 当蓝牙A2DP SINK功能未启用时，提供空实现
+void bt_a2dp_sink_init(void)
+{
+    ESP_LOGW(TAG, "蓝牙A2DP SINK功能未启用");
+}
+
+void bt_a2dp_sink_deinit(void)
+{
+    ESP_LOGW(TAG, "蓝牙A2DP SINK功能未启用");
+}
+
+void bt_a2dp_sink_set_name(const char *name)
+{
+    ESP_LOGW(TAG, "蓝牙A2DP SINK功能未启用");
+}
+
+void bt_a2dp_sink_set_volume(uint8_t volume)
+{
+    ESP_LOGW(TAG, "蓝牙A2DP SINK功能未启用");
+}
+
+void bt_a2dp_sink_set_enabled(bool enabled)
+{
+    ESP_LOGW(TAG, "蓝牙A2DP SINK功能未启用");
+}
+
+bool bt_a2dp_sink_is_enabled(void)
+{
+    return false;
+}
+
+const char *bt_a2dp_sink_get_name(void)
+{
+    return "ESP32_Audio";
+}
+
+uint8_t bt_a2dp_sink_get_volume(void)
+{
+    return 70;
+}
+
+#endif // CONFIG_BT_A2DP_SINK_ENABLED
