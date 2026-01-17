@@ -44,6 +44,7 @@
 #include "lwip/lwip_napt.h"
 
 #include "router_globals.h"
+#include "bt_a2dp_sink.h"
 
 // On board LED
 #if defined(CONFIG_IDF_TARGET_ESP32S3)
@@ -728,6 +729,9 @@ void app_main(void)
 
     get_portmap_tab();
 
+    // Initialize global configuration
+    init_global_config();
+
     // Setup WIFI
     wifi_init(mac, ssid, ent_username, ent_identity, passwd, static_ip, subnet_mask, gateway_addr, ap_mac, ap_ssid, ap_passwd, ap_ip);
 
@@ -746,6 +750,13 @@ void app_main(void)
     if (strcmp(lock, "0") ==0) {
         ESP_LOGI(TAG,"Starting config web server");
         start_webserver();
+        
+        // 根据配置初始化蓝牙功能
+        if (g_config.bluetooth.enabled) {
+            bt_a2dp_sink_set_name(g_config.bluetooth.device_name);
+            bt_a2dp_sink_set_volume(g_config.bluetooth.volume);
+            bt_a2dp_sink_init();
+        }
     }
     free(lock);
 

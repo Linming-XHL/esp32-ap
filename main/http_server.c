@@ -24,6 +24,7 @@
 #include <esp_http_server.h>
 
 #include "pages.h"
+#include "bt_a2dp_sink.h"
 #include "router_globals.h"
 
 // 外部函数声明
@@ -160,6 +161,37 @@ static esp_err_t index_get_handler(httpd_req_t *req)
                     }
                 }
             }
+            // 处理蓝牙设置
+            char bt_param[64];
+            if (httpd_query_key_value(buf, "bt_enabled", bt_param, sizeof(bt_param)) == ESP_OK) {
+                bool enabled = (atoi(bt_param) != 0);
+                g_config.bluetooth.enabled = enabled;
+                ESP_LOGI(TAG, "Bluetooth enabled: %s", enabled ? "true" : "false");
+                
+                if (httpd_query_key_value(buf, "bt_name", bt_param, sizeof(bt_param)) == ESP_OK) {
+                    preprocess_string(bt_param);
+                    if (strlen(bt_param) > 0 && strlen(bt_param) < 32) {
+                        strcpy(g_config.bluetooth.device_name, bt_param);
+                        ESP_LOGI(TAG, "Bluetooth name: %s", bt_param);
+                    }
+                }
+                
+                if (httpd_query_key_value(buf, "bt_volume", bt_param, sizeof(bt_param)) == ESP_OK) {
+                    uint8_t volume = atoi(bt_param);
+                    if (volume <= 100) {
+                        g_config.bluetooth.volume = volume;
+                        ESP_LOGI(TAG, "Bluetooth volume: %d%%", volume);
+                    }
+                }
+                
+                // 保存配置到NVS
+                save_config_to_nvs();
+                
+                // 应用蓝牙配置
+                bt_a2dp_sink_set_enabled(g_config.bluetooth.enabled);
+                bt_a2dp_sink_set_name(g_config.bluetooth.device_name);
+                bt_a2dp_sink_set_volume(g_config.bluetooth.volume);
+            }
         }
         free(buf);
     }
@@ -196,6 +228,11 @@ static esp_err_t get_config_handler(httpd_req_t *req)
     cJSON_AddStringToObject(response, "ap_ssid", err3 == ESP_OK ? ap_ssid : "ESP32_Repeater");
     cJSON_AddStringToObject(response, "ap_passwd", err4 == ESP_OK ? ap_passwd : "12345678");
     cJSON_AddStringToObject(response, "ap_mac", ""); // 默认空
+    
+    // 添加蓝牙配置
+    cJSON_AddBoolToObject(response, "bt_enabled", g_config.bluetooth.enabled);
+    cJSON_AddStringToObject(response, "bt_name", g_config.bluetooth.device_name);
+    cJSON_AddNumberToObject(response, "bt_volume", g_config.bluetooth.volume);
 
     char *response_string = cJSON_Print(response);
 
@@ -333,6 +370,52 @@ static esp_err_t config_post_handler(httpd_req_t *req)
         }
 
         free(mac_str);
+    }
+    
+    /* 处理蓝牙配置 */
+    cJSON *bt_enabled = cJSON_GetObjectItem(json, "bt_enabled");
+    cJSON *bt_name = cJSON_GetObjectItem(json, "bt_name");
+    cJSON *bt_volume = cJSON_GetObjectItem(json, "bt_volume");
+    
+    bool bt_config_changed = false;
+    
+    if (bt_enabled != NULL) {
+        bool enabled = cJSON_IsTrue(bt_enabled) || (cJSON_IsNumber(bt_enabled) && bt_enabled->valuedouble != 0);
+        if (g_config.bluetooth.enabled != enabled) {
+            g_config.bluetooth.enabled = enabled;
+            bt_config_changed = true;
+        }
+    }
+    
+    if (cJSON_IsString(bt_name) && strlen(bt_name->valuestring) > 0 && strlen(bt_name->valuestring) < 32) {
+        if (strcmp(g_config.bluetooth.device_name, bt_name->valuestring) != 0) {
+            strcpy(g_config.bluetooth.device_name, bt_name->valuestring);
+            bt_config_changed = true;
+        }
+    }
+    
+    if (cJSON_IsNumber(bt_volume)) {
+        int volume = (int)bt_volume->valuedouble;
+        if (volume >= 0 && volume <= 100) {
+            if (g_config.bluetooth.volume != (uint8_t)volume) {
+                g_config.bluetooth.volume = (uint8_t)volume;
+                bt_config_changed = true;
+            }
+        }
+    }
+    
+    if (bt_config_changed) {
+        // 保存蓝牙配置到NVS
+        save_config_to_nvs();
+        config_updated = true;
+        
+        // 应用蓝牙配置
+        bt_a2dp_sink_set_enabled(g_config.bluetooth.enabled);
+        bt_a2dp_sink_set_name(g_config.bluetooth.device_name);
+        bt_a2dp_sink_set_volume(g_config.bluetooth.volume);
+        
+        ESP_LOGI(TAG, "蓝牙配置已更新: 启用=%d, 名称=%s, 音量=%d%%", 
+                g_config.bluetooth.enabled, g_config.bluetooth.device_name, g_config.bluetooth.volume);
     }
 
     /* 发送响应 */

@@ -228,6 +228,29 @@
                     </div>
                 </div>
                 
+                <div class="section">
+                    <h3>蓝牙音频设置</h3>
+                    <div class="form-group">
+                        <label for="bt_enabled">蓝牙音频功能</label>
+                        <select id="bt_enabled" name="bt_enabled">
+                            <option value="0">禁用</option>
+                            <option value="1">启用</option>
+                        </select>
+                        <div class="help-text">启用后ESP32将作为蓝牙音频接收器</div>
+                    </div>
+                    <div class="form-group">
+                        <label for="bt_name">蓝牙设备名称</label>
+                        <input type="text" id="bt_name" name="bt_name" maxlength="31" 
+                               value="ESP32_Audio" placeholder="设置蓝牙设备名称">
+                        <div class="help-text">其他设备搜索蓝牙时将看到的名称</div>
+                    </div>
+                    <div class="form-group">
+                        <label for="bt_volume">音频音量: <span id="volumeValue">70%</span></label>
+                        <input type="range" id="bt_volume" name="bt_volume" min="0" max="100" value="70">
+                        <div class="help-text">设置从IO26输出的模拟音频音量</div>
+                    </div>
+                </div>
+                
                 <button type="submit" class="submit-btn" id="submitBtn">
                     保存配置并重启
                 </button>
@@ -240,6 +263,14 @@
     <script>
         // 页面加载时获取当前配置
         window.addEventListener('DOMContentLoaded', function() {
+            // 音量滑块实时显示功能
+            const volumeSlider = document.getElementById('bt_volume');
+            const volumeValue = document.getElementById('volumeValue');
+            
+            volumeSlider.addEventListener('input', function() {
+                volumeValue.textContent = this.value + '%';
+            });
+            
             // 发送GET请求获取当前配置
             fetch('/config', {
                 method: 'GET',
@@ -264,6 +295,23 @@
                 }
                 if (config.ap_mac) {
                     document.getElementById('ap_mac').value = config.ap_mac;
+                }
+                
+                // 填充蓝牙配置
+                if (config.bt_enabled !== undefined) {
+                    const btEnabledSelect = document.getElementById('bt_enabled');
+                    btEnabledSelect.value = config.bt_enabled ? '1' : '0';
+                }
+                
+                if (config.bt_name) {
+                    document.getElementById('bt_name').value = config.bt_name;
+                }
+                
+                if (config.bt_volume !== undefined) {
+                    const volumeSlider = document.getElementById('bt_volume');
+                    const volumeValue = document.getElementById('volumeValue');
+                    volumeSlider.value = config.bt_volume;
+                    volumeValue.textContent = config.bt_volume + '%';
                 }
             })
             .catch(error => {
