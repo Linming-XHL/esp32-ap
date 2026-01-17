@@ -24,8 +24,6 @@
 static dac_oneshot_handle_t dac_oneshot = NULL;
 static dac_oneshot_config_t dac_config = {
     .chan_id = DAC_CHANNEL,
-    .bit_width = DAC_BIT_WIDTH_8,
-    .clk_src = DAC_ONESHOT_CLK_SRC_DEFAULT,
 };
 
 static bool bt_enabled = false;
