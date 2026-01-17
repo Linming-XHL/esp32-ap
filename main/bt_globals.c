@@ -4,8 +4,8 @@
 #include "nvs_flash.h"
 #include "nvs.h"
 
-#define TAG "ROUTER_GLOBALS"
-#define NVS_NAMESPACE "router_config"
+#define TAG "BT_GLOBALS"
+#define NVS_NAMESPACE "esp32_nat"
 
 // 全局配置变量
 global_config_t g_config;
