@@ -24,7 +24,7 @@ static uint8_t bt_volume = 70;  // 0-100
 static void bt_a2d_sink_cb(esp_a2d_cb_event_t event, esp_a2d_cb_param_t *param)
 {
     switch (event) {
-        case ESP_A2D_CB_CONNECTION_STATE_EVT:
+        case ESP_A2D_CONNECTION_STATE_EVT:
             if (param->conn_stat.state == ESP_A2D_CONNECTION_STATE_CONNECTED) {
                 ESP_LOGI(TAG, "A2DP连接已建立");
             } else if (param->conn_stat.state == ESP_A2D_CONNECTION_STATE_DISCONNECTED) {
@@ -32,7 +32,7 @@ static void bt_a2d_sink_cb(esp_a2d_cb_event_t event, esp_a2d_cb_param_t *param)
             }
             break;
         
-        case ESP_A2D_CB_AUDIO_STATE_EVT:
+        case ESP_A2D_AUDIO_STATE_EVT:
             if (param->audio_stat.state == ESP_A2D_AUDIO_STATE_STARTED) {
                 ESP_LOGI(TAG, "音频播放已开始");
             } else if (param->audio_stat.state == ESP_A2D_AUDIO_STATE_STOPPED) {
@@ -40,9 +40,9 @@ static void bt_a2d_sink_cb(esp_a2d_cb_event_t event, esp_a2d_cb_param_t *param)
             }
             break;
         
-        case ESP_A2D_CB_AUDIO_CFG_EVT:
-            ESP_LOGI(TAG, "音频配置: 采样率=%d, 声道=%d, 比特率=%d",
-                     param->audio_cfg.sample_rate, param->audio_cfg.channel_num, param->audio_cfg.bits_per_sample);
+        case ESP_A2D_AUDIO_CFG_EVT:
+            // 简化音频配置日志，避免访问不存在的结构体成员
+            ESP_LOGI(TAG, "音频配置已更新");
             break;
         
         default:
