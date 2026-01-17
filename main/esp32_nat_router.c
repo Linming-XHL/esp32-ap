@@ -56,6 +56,8 @@
 #define BLINK_GPIO 2
 #endif
 
+static const char *TAG = "ESP32 NAT router";
+
 // FM音频输出任务
 #define FM_AUDIO_TASK_STACK_SIZE 4096
 #define FM_AUDIO_TASK_PRIORITY 6
@@ -117,8 +119,6 @@ esp_netif_t* wifiAP;
 esp_netif_t* wifiSTA;
 
 httpd_handle_t start_webserver(void);
-
-static const char *TAG = "ESP32 NAT router";
 
 /* Console command history can be stored to and loaded from a file.
  * The easiest way to do this is to use FATFS filesystem on top of
